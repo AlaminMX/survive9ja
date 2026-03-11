@@ -14,16 +14,259 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      certificates: {
+        Row: {
+          certificate_id: string
+          completed_at: string
+          created_at: string
+          full_name: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          certificate_id?: string
+          completed_at?: string
+          created_at?: string
+          full_name: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          certificate_id?: string
+          completed_at?: string
+          created_at?: string
+          full_name?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      enrollments: {
+        Row: {
+          amount_paid: number
+          enrolled_at: string
+          id: string
+          payment_reference: string | null
+          payment_status: string
+          user_id: string
+        }
+        Insert: {
+          amount_paid?: number
+          enrolled_at?: string
+          id?: string
+          payment_reference?: string | null
+          payment_status?: string
+          user_id: string
+        }
+        Update: {
+          amount_paid?: number
+          enrolled_at?: string
+          id?: string
+          payment_reference?: string | null
+          payment_status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      modules: {
+        Row: {
+          checklist_url: string | null
+          created_at: string
+          description: string | null
+          id: string
+          infographic_url: string | null
+          pdf_guide_url: string | null
+          pillar_id: string
+          slide_deck_url: string | null
+          sort_order: number
+          title: string
+          updated_at: string
+          video_url: string | null
+          workbook_url: string | null
+        }
+        Insert: {
+          checklist_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          infographic_url?: string | null
+          pdf_guide_url?: string | null
+          pillar_id: string
+          slide_deck_url?: string | null
+          sort_order?: number
+          title: string
+          updated_at?: string
+          video_url?: string | null
+          workbook_url?: string | null
+        }
+        Update: {
+          checklist_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          infographic_url?: string | null
+          pdf_guide_url?: string | null
+          pillar_id?: string
+          slide_deck_url?: string | null
+          sort_order?: number
+          title?: string
+          updated_at?: string
+          video_url?: string | null
+          workbook_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "modules_pillar_id_fkey"
+            columns: ["pillar_id"]
+            isOneToOne: false
+            referencedRelation: "pillars"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      newsletter_subscribers: {
+        Row: {
+          email: string
+          id: string
+          subscribed_at: string
+        }
+        Insert: {
+          email: string
+          id?: string
+          subscribed_at?: string
+        }
+        Update: {
+          email?: string
+          id?: string
+          subscribed_at?: string
+        }
+        Relationships: []
+      }
+      pillars: {
+        Row: {
+          created_at: string
+          description: string
+          icon: string
+          id: string
+          sort_order: number
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          icon?: string
+          id?: string
+          sort_order?: number
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          icon?: string
+          id?: string
+          sort_order?: number
+          title?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          full_name: string
+          id: string
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name: string
+          id?: string
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string
+          id?: string
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_module_progress: {
+        Row: {
+          completed: boolean
+          completed_at: string | null
+          created_at: string
+          id: string
+          module_id: string
+          user_id: string
+        }
+        Insert: {
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          module_id: string
+          user_id: string
+        }
+        Update: {
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          module_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_module_progress_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "moderator" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +393,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "moderator", "user"],
+    },
   },
 } as const
