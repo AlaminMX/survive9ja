@@ -1,7 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
-
+import { Link } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 const Navbar = () => {
   const [open, setOpen] = useState(false);
 
