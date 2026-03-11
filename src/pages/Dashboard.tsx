@@ -77,7 +77,7 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-muted">
+    <div className="min-h-screen bg-muted pb-20 md:pb-0">
       {/* Header */}
       <header className="border-b bg-background">
         <div className="container mx-auto flex h-14 items-center justify-between px-4">
