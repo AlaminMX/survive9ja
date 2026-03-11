@@ -11,6 +11,10 @@ import Signup from "./pages/Signup.tsx";
 import ForgotPassword from "./pages/ForgotPassword.tsx";
 import ResetPassword from "./pages/ResetPassword.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
+import Payment from "./pages/Payment.tsx";
+import ModulePage from "./pages/ModulePage.tsx";
+import Certificate from "./pages/Certificate.tsx";
+import VerifyCertificate from "./pages/VerifyCertificate.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -29,6 +33,10 @@ const App = () => (
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/payment" element={<ProtectedRoute><Payment /></ProtectedRoute>} />
+            <Route path="/module/:id" element={<ProtectedRoute><ModulePage /></ProtectedRoute>} />
+            <Route path="/certificate" element={<ProtectedRoute><Certificate /></ProtectedRoute>} />
+            <Route path="/verify/:certId" element={<VerifyCertificate />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
