@@ -191,6 +191,7 @@ const Dashboard = () => {
           })}
         </div>
       </div>
+      <MobileTabBar />
     </div>
   );
 };

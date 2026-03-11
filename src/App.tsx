@@ -13,8 +13,15 @@ import ResetPassword from "./pages/ResetPassword.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
 import Payment from "./pages/Payment.tsx";
 import ModulePage from "./pages/ModulePage.tsx";
+import Modules from "./pages/Modules.tsx";
+import Profile from "./pages/Profile.tsx";
 import Certificate from "./pages/Certificate.tsx";
 import VerifyCertificate from "./pages/VerifyCertificate.tsx";
+import AdminLayout from "./pages/admin/AdminLayout.tsx";
+import AdminAnalytics from "./pages/admin/AdminAnalytics.tsx";
+import AdminUsers from "./pages/admin/AdminUsers.tsx";
+import AdminCourses from "./pages/admin/AdminCourses.tsx";
+import AdminSubscribers from "./pages/admin/AdminSubscribers.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -33,10 +40,18 @@ const App = () => (
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/modules" element={<ProtectedRoute><Modules /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/payment" element={<ProtectedRoute><Payment /></ProtectedRoute>} />
             <Route path="/module/:id" element={<ProtectedRoute><ModulePage /></ProtectedRoute>} />
             <Route path="/certificate" element={<ProtectedRoute><Certificate /></ProtectedRoute>} />
             <Route path="/verify/:certId" element={<VerifyCertificate />} />
+            <Route path="/admin" element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
+              <Route index element={<AdminAnalytics />} />
+              <Route path="users" element={<AdminUsers />} />
+              <Route path="courses" element={<AdminCourses />} />
+              <Route path="subscribers" element={<AdminSubscribers />} />
+            </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
