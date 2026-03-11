@@ -17,15 +17,23 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: form.email,
       password: form.password,
     });
-    setLoading(false);
     if (error) {
+      setLoading(false);
       toast.error(error.message);
-    } else {
+      return;
+    }
+    // Check if user is admin
+    if (data.user) {
+      const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: data.user.id, _role: "admin" });
+      setLoading(false);
       toast.success("Welcome back!");
+      navigate(isAdmin ? "/admin" : "/dashboard");
+    } else {
+      setLoading(false);
       navigate("/dashboard");
     }
   };

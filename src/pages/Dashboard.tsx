@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { LogOut, BookOpen, Award, ArrowRight, CheckCircle, Circle, Lock, ChevronRight } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import MobileTabBar from "@/components/MobileTabBar";
 
 interface Pillar {
   id: string;
@@ -76,7 +77,7 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-muted">
+    <div className="min-h-screen bg-muted pb-20 md:pb-0">
       {/* Header */}
       <header className="border-b bg-background">
         <div className="container mx-auto flex h-14 items-center justify-between px-4">
@@ -190,6 +191,7 @@ const Dashboard = () => {
           })}
         </div>
       </div>
+      <MobileTabBar />
     </div>
   );
 };
