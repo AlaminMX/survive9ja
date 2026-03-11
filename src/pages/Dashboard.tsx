@@ -10,7 +10,7 @@ const Dashboard = () => {
   const firstName = profile?.full_name?.split(" ")[0] || "Learner";
 
   // Placeholder data - will be dynamic when modules are loaded
-  const progress = 0;
+  const progress: number = 0;
   const totalModules = 16;
   const completedModules = 0;
 
