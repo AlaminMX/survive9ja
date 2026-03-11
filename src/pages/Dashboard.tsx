@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { LogOut, BookOpen, Award, ArrowRight, CheckCircle, Circle, Lock, ChevronRight } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import MobileTabBar from "@/components/MobileTabBar";
 
 interface Pillar {
   id: string;
