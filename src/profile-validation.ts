@@ -6,14 +6,13 @@ export type ProfileFields = {
   country: string;
   region: string;
   bio: string;
-  avatar: string;
   accept: boolean;
 };
 export type ProfileErrors = Partial<Record<keyof ProfileFields, string>>;
 
 export function validateProfile(fields: ProfileFields, onboarding: boolean) {
   const errors: ProfileErrors = {};
-  const { username, name, country, region, bio, avatar, accept } = fields;
+  const { username, name, country, region, bio, accept } = fields;
   const length = (value: string) => Array.from(value.trim()).length;
   if (!username.trim()) errors.username = "Enter a username.";
   else if (username.length < 3) errors.username = "Use at least 3 characters.";
@@ -37,17 +36,6 @@ export function validateProfile(fields: ProfileFields, onboarding: boolean) {
     errors.region = "Use 80 characters or fewer for your city.";
   if (length(bio) > 160)
     errors.bio = "Shorten your bio to 160 characters or fewer.";
-  if (!onboarding && avatar.trim()) {
-    if (length(avatar) > 500)
-      errors.avatar = "Use an avatar URL with 500 characters or fewer.";
-    else {
-      try {
-        if (new URL(avatar.trim()).protocol !== "https:") throw new Error();
-      } catch {
-        errors.avatar = "Enter a valid avatar URL starting with https://.";
-      }
-    }
-  }
   if (onboarding && !accept)
     errors.accept = "Accept the Terms and Privacy Policy to finish.";
   return errors;

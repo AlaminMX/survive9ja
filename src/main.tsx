@@ -55,6 +55,7 @@ import {
 import { authCallback, db, message, preview, rpc } from "./api";
 import { validateProfile, type ProfileFields } from "./profile-validation";
 import { examples } from "./examples";
+import { AvatarEditor, uploadAvatar, type AvatarChange } from "./avatar";
 import "./style.css";
 
 const settings = "/settings/profile";
@@ -1097,14 +1098,16 @@ function ProfileEditor({ onboarding }: { onboarding: boolean }) {
   );
 }
 function ProfileForm({ onboarding }: { onboarding: boolean }) {
-  const { profile, refresh } = useAccount();
+  const { profile, refresh, session } = useAccount();
+  const [avatar, setAvatar] = useState<AvatarChange>({ kind: "keep" });
+  const [cropPending, setCropPending] = useState(false);
+  const uploaded = useRef<{ blob: Blob; url: string } | null>(null);
   const [fields, setFields] = useState<ProfileFields>({
     username: profile?.username || "",
     name: profile?.display_name || "",
     country: profile?.country || "Nigeria",
     region: profile?.region || "",
     bio: profile?.bio || "",
-    avatar: profile?.avatar_url || "",
     accept: false,
   });
   const [touched, setTouched] = useState<
@@ -1185,7 +1188,7 @@ function ProfileForm({ onboarding }: { onboarding: boolean }) {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (preview || busy) return;
+    if (preview || busy || cropPending) return;
     setAttempted(true);
     setError("");
     const firstInvalid = (Object.keys(errors) as (keyof ProfileFields)[])[0];
@@ -1200,6 +1203,18 @@ function ProfileForm({ onboarding }: { onboarding: boolean }) {
     const form = new FormData(event.currentTarget);
     setBusy(true);
     try {
+      let avatarUrl =
+        avatar.kind === "keep" ? profile?.avatar_url || null : null;
+      if (avatar.kind === "replace") {
+        if (!session) throw new Error("Sign in to upload your profile photo.");
+        if (uploaded.current?.blob !== avatar.blob) {
+          uploaded.current = {
+            blob: avatar.blob,
+            url: await uploadAvatar(session.user.id, avatar.blob),
+          };
+        }
+        avatarUrl = uploaded.current.url;
+      }
       await rpc("save_profile", {
         p_username: fields.username,
         p_name: fields.name.trim(),
@@ -1207,7 +1222,7 @@ function ProfileForm({ onboarding }: { onboarding: boolean }) {
         p_region: fields.region.trim() || null,
         p_bio: fields.bio.trim() || null,
         p_abroad: form.has("abroad"),
-        p_avatar: fields.avatar.trim() || null,
+        p_avatar: avatarUrl,
         p_terms: fields.accept ? "draft-1" : null,
         p_privacy: fields.accept ? "draft-1" : null,
       });
@@ -1354,19 +1369,13 @@ function ProfileForm({ onboarding }: { onboarding: boolean }) {
           </small>
           {fieldError("bio")}
         </label>
-        {!onboarding && (
-          <label>
-            Avatar URL · optional
-            <input
-              {...fieldProps("avatar")}
-              type="url"
-              value={fields.avatar}
-              onChange={(e) => update("avatar", e.target.value)}
-              placeholder="https://…"
-            />
-            {fieldError("avatar")}
-          </label>
-        )}
+        <AvatarEditor
+          existing={profile?.avatar_url}
+          value={avatar}
+          onChange={setAvatar}
+          onPending={setCropPending}
+          disabled={busy}
+        />
         <label className="check">
           <input
             type="checkbox"
@@ -1400,7 +1409,10 @@ function ProfileForm({ onboarding }: { onboarding: boolean }) {
             {fieldError("accept")}
           </div>
         )}
-        <button className="button primary" disabled={busy || preview}>
+        <button
+          className="button primary"
+          disabled={busy || preview || cropPending}
+        >
           {busy
             ? "Saving…"
             : onboarding

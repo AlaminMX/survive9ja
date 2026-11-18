@@ -1108,3 +1108,58 @@ html {
 .form [aria-invalid="true"] {
   border-color: var(--terra) !important;
 }
+
+.avatar-editor {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.avatar-editor legend {
+  padding: 0 5px;
+  font-size: 14px;
+  font-weight: 700;
+}
+.avatar-editor > p,
+.avatar-editor > small {
+  color: var(--muted);
+  font-size: 13px;
+}
+.avatar-picker span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.avatar-picker input::file-selector-button {
+  min-height: 35px;
+  padding: 0 8px;
+  margin-inline-end: 8px;
+  border: 0;
+  background: var(--leaf-soft);
+  color: var(--leaf-ink);
+  border-radius: 6px;
+  font: inherit;
+  cursor: pointer;
+}
+.avatar-crop {
+  display: grid;
+  gap: 8px;
+  width: min(100%, 380px);
+}
+.avatar-crop-preview {
+  display: block;
+  width: min(100%, 200px);
+  height: auto;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--line);
+}
+.avatar-crop input[type="range"] {
+  accent-color: var(--leaf);
+  padding: 0;
+}
