@@ -152,27 +152,17 @@ h3 {
   color: var(--leaf-ink);
 }
 .logomark {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  display: grid;
-  place-items: center;
-  background: var(--leaf);
-  color: var(--on-leaf);
-  position: relative;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: 9px;
+  border: 1px solid var(--line);
 }
-.logomark i,
-.logomark b {
-  position: absolute;
-  left: 14px;
-  top: 16px;
-  width: 2px;
-  height: 2px;
-  border-radius: 50%;
-  background: currentColor;
-}
-.logomark b {
-  left: 19px;
+.community-logo {
+  display: block;
+  width: min(230px, 100%);
+  height: auto;
+  margin: 20px 0 8px;
 }
 .main-nav,
 .head-actions {

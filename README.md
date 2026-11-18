@@ -59,3 +59,11 @@ Use a signed-out browser, a newly confirmed member, an older verified member, an
 ## Local handoff
 
 Chromium captures are in `work/screenshots/`. The local SQL checks used PGlite and native PostgreSQL with separate roles and Supabase-style identity claims. Two independent PostgreSQL connections tested concurrent submissions at each quota. Supabase Auth delivery, Google consent, deployed PostgREST responses and Vercel routing still require the project setup above.
+
+### If the deployed feed says Supabase is missing
+
+Vite reads the public configuration during the Vercel build. Set the project URL and the Supabase **publishable** key or legacy **anon** key on the exact Vercel project serving the domain you use. Use `VITE_SUPABASE_URL` with `VITE_SUPABASE_ANON_KEY` (or `VITE_SUPABASE_PUBLISHABLE_KEY`). The build also recognises matching public pairs supplied by the integration under `NEXT_PUBLIC_SUPABASE_` or `SUPABASE_`. Keep the two values in the same environment scope and use values from the same Supabase project. Use the Production scope for your live domain and redeploy after changes.
+
+Once a deployment has configuration, an empty feed is normal on a new project. A missing `public.feed` function indicates that the migrations still need to be applied in Supabase. After applying the four migrations and setting the Auth redirects for the live domain, use a test account to sign up, confirm your email, complete onboarding and publish the first discussion. See the pilot smoke test above before inviting members.
+
+The full Survive9ja logo is served at `/survive9ja-logo.svg`. The header and favicon share `/brand-mark.svg`.

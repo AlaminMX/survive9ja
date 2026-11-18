@@ -137,11 +137,13 @@ function AccountProvider({ children }: { children: ReactNode }) {
 function Logo() {
   return (
     <Link className="logo" to="/" aria-label="Survive9ja home">
-      <span className="logomark">
-        <MessageCircle size={22} strokeWidth={2.25} />
-        <i />
-        <b />
-      </span>
+      <img
+        className="logomark"
+        src="/brand-mark.svg"
+        alt=""
+        width={44}
+        height={44}
+      />
       <span>
         Survive<span className="logonine">9ja</span>
       </span>
@@ -650,7 +652,10 @@ function Feed({ kind }: { kind: Kind }) {
           )}
         </div>
         {!db && !preview && (
-          <p className="notice">Connect Supabase to load the community feed.</p>
+          <p className="notice">
+            The community feed is unavailable. This deployment is missing its
+            Supabase configuration.
+          </p>
         )}
         {error && (
           <div className="notice" role="alert">
@@ -1216,6 +1221,14 @@ function Community() {
           {profile?.completed_at ? "My profile" : "Join the community"}
         </Link>
       </div>
+      <img
+        className="community-logo"
+        src="/survive9ja-logo.svg"
+        alt="Survive9ja. Discuss. Express. Build. Survive."
+        width={230}
+        height={200}
+        loading="lazy"
+      />
       <SectionLinks />
     </Narrow>
   );
