@@ -52,7 +52,8 @@ import {
   type Kind,
   type Profile,
 } from "./data";
-import { db, message, preview, rpc } from "./api";
+import { authCallback, db, message, preview, rpc } from "./api";
+import { validateProfile, type ProfileFields } from "./profile-validation";
 import { examples } from "./examples";
 import "./style.css";
 
@@ -151,7 +152,26 @@ function Logo() {
   );
 }
 function Shell() {
-  const { profile } = useAccount();
+  const { profile, session, loading } = useAccount();
+  const [callbackPending, setCallbackPending] = useState(
+    window.location.pathname === "/" &&
+      (authCallback.type === "signup" ||
+        authCallback.type === "recovery" ||
+        authCallback.failed),
+  );
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (!callbackPending || loading) return;
+    setCallbackPending(false);
+    if (authCallback.type === "recovery")
+      navigate("/auth?reset=1", { replace: true });
+    else if (session && !authCallback.failed)
+      navigate(profile?.completed_at ? settings : "/onboarding", {
+        replace: true,
+      });
+    else
+      navigate("/auth", { replace: true, state: { confirmationFailed: true } });
+  }, [callbackPending, loading, navigate, profile?.completed_at, session]);
   const location = useLocation();
   const [theme, setTheme] = useState(
     () => localStorage.getItem("survive-theme") || "system",
@@ -781,7 +801,16 @@ function Require({
       </Narrow>
     );
   if (!session)
-    return <Navigate to="/auth" state={{ next: location.pathname }} replace />;
+    return (
+      <Navigate
+        to="/auth"
+        state={{
+          next: location.pathname,
+          confirmationFailed: onboarding && authCallback.failed,
+        }}
+        replace
+      />
+    );
   if (!session.user.email_confirmed_at)
     return (
       <Narrow title="Confirm your email">
@@ -792,6 +821,68 @@ function Require({
     return <Navigate to="/onboarding" replace />;
   return children;
 }
+function PasswordField({
+  existing,
+  reset,
+}: {
+  existing: boolean;
+  reset: boolean;
+}) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div className="password-field">
+      <label htmlFor="account-password">
+        {reset ? "New password" : "Password"}
+      </label>
+      <div className="password-control">
+        <input
+          id="account-password"
+          name="password"
+          type={visible ? "text" : "password"}
+          autoComplete={existing ? "current-password" : "new-password"}
+          minLength={existing ? undefined : 8}
+          aria-describedby={existing ? undefined : "password-length"}
+          required
+        />
+        <button
+          type="button"
+          aria-controls="account-password"
+          aria-label={visible ? "Hide password" : "Show password"}
+          onClick={() => setVisible(!visible)}
+        >
+          <svg
+            aria-hidden="true"
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.65"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path
+              d={
+                visible
+                  ? "M5 4h14v7l-4 3-3-3-3 3-4-3z"
+                  : "M5 4h14v12l-4 3-3-3-3 3-4-3z"
+              }
+            />
+            {visible ? (
+              <path d="M12 14v7m-3-2 3 2 3-2M9 8h6" />
+            ) : (
+              <path d="M9 10h6m-6 3h6" />
+            )}
+          </svg>
+          <span>{visible ? "Hide" : "Show"}</span>
+        </button>
+      </div>
+      {!existing && (
+        <small id="password-length">Use at least 8 characters.</small>
+      )}
+    </div>
+  );
+}
 function Auth() {
   const { session, profile, loading } = useAccount();
   const location = useLocation();
@@ -801,9 +892,18 @@ function Auth() {
       : "login",
   );
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const authState = location.state as {
+    next?: string;
+    confirmationFailed?: boolean;
+  } | null;
+  const [error, setError] = useState(() =>
+    authCallback.failed || authState?.confirmationFailed
+      ? "This email link expired or has already been used. Sign in if your email is confirmed, or request a fresh confirmation link."
+      : "",
+  );
   const [info, setInfo] = useState("");
-  const next = (location.state as { next?: string } | null)?.next;
+  const next = authState?.next;
+  const confirmationTarget = window.location.origin + "/onboarding";
   const base = window.location.origin + "/auth";
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -815,7 +915,17 @@ function Auth() {
     setError("");
     setInfo("");
     try {
-      if (mode === "reset") {
+      if (mode === "resend") {
+        const result = await db.auth.resend({
+          type: "signup",
+          email,
+          options: { emailRedirectTo: confirmationTarget },
+        });
+        if (result.error) throw result.error;
+        setInfo(
+          "If this address has an unconfirmed account, check your inbox for a fresh link.",
+        );
+      } else if (mode === "reset") {
         const result = await db.auth.updateUser({ password });
         if (result.error) throw result.error;
         sessionStorage.removeItem("recovery");
@@ -832,7 +942,7 @@ function Auth() {
         const result = await db.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: base },
+          options: { emailRedirectTo: confirmationTarget },
         });
         if (result.error) throw result.error;
         setInfo(
@@ -852,7 +962,7 @@ function Auth() {
       setBusy(false);
     }
   }
-  if (session && !loading && mode !== "reset" && mode !== "forgot")
+  if (session && !loading && (mode === "login" || mode === "register"))
     return (
       <Navigate
         to={profile?.completed_at ? next || settings : "/onboarding"}
@@ -864,11 +974,13 @@ function Auth() {
       title={
         mode === "register"
           ? "Join Survive9ja"
-          : mode === "forgot"
-            ? "Reset your password"
-            : mode === "reset"
-              ? "Choose a new password"
-              : "Sign in"
+          : mode === "resend"
+            ? "Resend confirmation email"
+            : mode === "forgot"
+              ? "Reset your password"
+              : mode === "reset"
+                ? "Choose a new password"
+                : "Sign in"
       }
       back="/"
     >
@@ -888,19 +1000,12 @@ function Auth() {
             <input name="email" type="email" autoComplete="email" required />
           </label>
         )}
-        {mode !== "forgot" && (
-          <label>
-            {mode === "reset" ? "New password" : "Password"}
-            <input
-              name="password"
-              type="password"
-              autoComplete={
-                mode === "login" ? "current-password" : "new-password"
-              }
-              minLength={mode === "login" ? undefined : 8}
-              required
-            />
-          </label>
+        {(mode === "login" || mode === "register" || mode === "reset") && (
+          <PasswordField
+            key={mode}
+            existing={mode === "login"}
+            reset={mode === "reset"}
+          />
         )}
         <button
           className="button primary"
@@ -908,11 +1013,13 @@ function Auth() {
         >
           {mode === "register"
             ? "Create account"
-            : mode === "forgot"
-              ? "Send reset link"
-              : mode === "reset"
-                ? "Save password"
-                : "Sign in"}
+            : mode === "resend"
+              ? "Send new confirmation link"
+              : mode === "forgot"
+                ? "Send reset link"
+                : mode === "reset"
+                  ? "Save password"
+                  : "Sign in"}
         </button>
       </form>
       {(mode === "login" || mode === "register") && (
@@ -955,6 +1062,15 @@ function Auth() {
             >
               Forgot password?
             </button>
+            <button
+              onClick={() => {
+                setMode("resend");
+                setError("");
+                setInfo("");
+              }}
+            >
+              Resend confirmation
+            </button>
           </>
         ) : (
           <button
@@ -982,34 +1098,133 @@ function ProfileEditor({ onboarding }: { onboarding: boolean }) {
 }
 function ProfileForm({ onboarding }: { onboarding: boolean }) {
   const { profile, refresh } = useAccount();
-  const [country, setCountry] = useState(profile?.country || "Nigeria");
+  const [fields, setFields] = useState<ProfileFields>({
+    username: profile?.username || "",
+    name: profile?.display_name || "",
+    country: profile?.country || "Nigeria",
+    region: profile?.region || "",
+    bio: profile?.bio || "",
+    avatar: profile?.avatar_url || "",
+    accept: false,
+  });
+  const [touched, setTouched] = useState<
+    Partial<Record<keyof ProfileFields, boolean>>
+  >({});
+  const [attempted, setAttempted] = useState(false);
   const [error, setError] = useState("");
+  const [usernameError, setUsernameError] = useState("");
   const [busy, setBusy] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
   const navigate = useNavigate();
+  const errors = validateProfile(fields, onboarding);
+  const nigeria = fields.country.trim().toLowerCase() === "nigeria";
+  const steps = [
+    {
+      label: "Name",
+      completed: !errors.username && !errors.name && !usernameError,
+    },
+    { label: "Location", completed: !errors.country && !errors.region },
+    { label: "Review", completed: !errors.bio && !errors.accept },
+  ];
+  const complete = steps.filter((step) => step.completed).length;
   if (onboarding && profile?.completed_at)
     return <Navigate to={settings} replace />;
+
+  function update(key: keyof ProfileFields, value: string | boolean) {
+    if (key === "username") setUsernameError("");
+    setFields((previous) => ({
+      ...previous,
+      ...(key === "country" &&
+      typeof value === "string" &&
+      (previous.country.trim().toLowerCase() === "nigeria") !==
+        (value.trim().toLowerCase() === "nigeria")
+        ? { region: "" }
+        : {}),
+      [key]: value,
+    }));
+  }
+
+  function feedback(key: keyof ProfileFields) {
+    return (
+      (key === "username" && usernameError) ||
+      ((attempted || touched[key]) && errors[key]) ||
+      ""
+    );
+  }
+
+  function fieldProps(key: keyof ProfileFields) {
+    return {
+      name: key,
+      onBlur: () => setTouched((previous) => ({ ...previous, [key]: true })),
+      "aria-invalid": Boolean(feedback(key)),
+      "aria-describedby":
+        [
+          feedback(key) && key + "-error",
+          (key === "username" || key === "bio") && key + "-hint",
+        ]
+          .filter(Boolean)
+          .join(" ") || undefined,
+    };
+  }
+
+  function fieldError(key: keyof ProfileFields) {
+    const text = feedback(key);
+    return text ? (
+      <small className="field-error" id={key + "-error"}>
+        {text}
+      </small>
+    ) : null;
+  }
+
+  function focusField(key: keyof ProfileFields) {
+    requestAnimationFrame(() => {
+      const input = formRef.current?.elements.namedItem(key);
+      if (input instanceof HTMLElement) input.focus();
+    });
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const val = (key: string) => String(form.get(key) || "").trim();
-    setBusy(true);
+    if (preview || busy) return;
+    setAttempted(true);
     setError("");
+    const firstInvalid = (Object.keys(errors) as (keyof ProfileFields)[])[0];
+    if (firstInvalid) {
+      focusField(firstInvalid);
+      return;
+    }
+    if (usernameError) {
+      focusField("username");
+      return;
+    }
+    const form = new FormData(event.currentTarget);
+    setBusy(true);
     try {
       await rpc("save_profile", {
-        p_username: val("username"),
-        p_name: val("name"),
-        p_country: val("country"),
-        p_region: val("region") || null,
-        p_bio: val("bio") || null,
+        p_username: fields.username,
+        p_name: fields.name.trim(),
+        p_country: fields.country.trim(),
+        p_region: fields.region.trim() || null,
+        p_bio: fields.bio.trim() || null,
         p_abroad: form.has("abroad"),
-        p_avatar: val("avatar") || null,
-        p_terms: form.has("accept") ? "draft-1" : null,
-        p_privacy: form.has("accept") ? "draft-1" : null,
+        p_avatar: fields.avatar.trim() || null,
+        p_terms: fields.accept ? "draft-1" : null,
+        p_privacy: fields.accept ? "draft-1" : null,
       });
       await refresh();
-      navigate("/u/" + val("username"));
+      navigate("/u/" + fields.username);
     } catch (e) {
-      setError(message(e));
+      const problem = message(e);
+      if (problem === "That username is already taken.") {
+        setUsernameError(problem);
+        focusField("username");
+      } else {
+        setError(
+          problem === "Failed to fetch"
+            ? "Couldn’t reach the server. Check your connection and try saving again."
+            : problem,
+        );
+      }
     } finally {
       setBusy(false);
     }
@@ -1023,90 +1238,133 @@ function ProfileForm({ onboarding }: { onboarding: boolean }) {
         Your username, display name and location details appear on your public
         profile after onboarding.
       </p>
+      {onboarding && (
+        <div className="profile-progress">
+          <div>
+            <strong>Profile progress</strong>
+            <span>
+              {complete} of {steps.length} complete
+            </span>
+          </div>
+          <progress
+            aria-label="Profile readiness"
+            value={complete}
+            max={steps.length}
+          />
+          <ul aria-label="Profile sections">
+            {steps.map((step) => (
+              <li key={step.label} data-complete={step.completed}>
+                {step.label}
+                <span className="sr-only">
+                  {" "}
+                  {step.completed ? "complete" : "incomplete"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <Status
-        error={error}
+        error={
+          error ||
+          (attempted && (Object.keys(errors).length || usernameError)
+            ? "Check the highlighted fields before saving."
+            : "")
+        }
         info={
           preview
             ? "Preview only · Connect Supabase to save a profile."
             : undefined
         }
       />
-      <form className="form" onSubmit={(e) => void submit(e)}>
+      <form
+        ref={formRef}
+        className="form"
+        noValidate
+        onSubmit={(event) => void submit(event)}
+      >
         <label>
           Username
           <input
-            name="username"
-            defaultValue={profile?.username}
+            {...fieldProps("username")}
+            value={fields.username}
+            onChange={(e) => update("username", e.target.value)}
             required
-            pattern="[a-z0-9_]{3,20}"
-            maxLength={20}
             autoCapitalize="none"
+            spellCheck={false}
           />
-          <small>3–20 lowercase letters, numbers or underscores.</small>
+          <small id="username-hint">
+            3–20 lowercase letters, numbers or underscores.
+          </small>
+          {fieldError("username")}
         </label>
         <label>
           Display name
           <input
-            name="name"
-            defaultValue={profile?.display_name}
+            {...fieldProps("name")}
+            value={fields.name}
+            onChange={(e) => update("name", e.target.value)}
             required
-            maxLength={60}
           />
+          {fieldError("name")}
         </label>
         <label>
           Country · public
           <input
-            name="country"
-            value={country}
-            onChange={(e) => setCountry(e.target.value)}
+            {...fieldProps("country")}
+            value={fields.country}
+            onChange={(e) => update("country", e.target.value)}
             required
-            maxLength={80}
           />
+          {fieldError("country")}
         </label>
-        {country.trim().toLowerCase() === "nigeria" ? (
-          <label>
-            State or FCT · public
-            <select name="region" defaultValue={profile?.region || ""} required>
+        <label>
+          {nigeria ? "State or FCT · public" : "City · optional, public"}
+          {nigeria ? (
+            <select
+              {...fieldProps("region")}
+              value={fields.region}
+              onChange={(e) => update("region", e.target.value)}
+              required
+            >
               <option value="">Choose a state or FCT</option>
               {states.map((state) => (
                 <option key={state}>{state}</option>
               ))}
             </select>
-          </label>
-        ) : (
-          <label>
-            City · optional, public
+          ) : (
             <input
-              name="region"
-              defaultValue={
-                profile?.country?.toLowerCase() !== "nigeria"
-                  ? profile?.region || ""
-                  : ""
-              }
-              maxLength={80}
+              {...fieldProps("region")}
+              value={fields.region}
+              onChange={(e) => update("region", e.target.value)}
             />
-          </label>
-        )}
+          )}
+          {fieldError("region")}
+        </label>
         <label>
           Bio · optional
           <textarea
-            name="bio"
-            defaultValue={profile?.bio || ""}
-            maxLength={160}
+            {...fieldProps("bio")}
+            value={fields.bio}
+            onChange={(e) => update("bio", e.target.value)}
             rows={3}
           />
-          <small>Up to 160 characters.</small>
+          <small id="bio-hint">
+            {Array.from(fields.bio.trim()).length} of 160 characters
+          </small>
+          {fieldError("bio")}
         </label>
         {!onboarding && (
           <label>
             Avatar URL · optional
             <input
-              name="avatar"
+              {...fieldProps("avatar")}
               type="url"
-              defaultValue={profile?.avatar_url || ""}
+              value={fields.avatar}
+              onChange={(e) => update("avatar", e.target.value)}
               placeholder="https://…"
-              maxLength={500}
             />
+            {fieldError("avatar")}
           </label>
         )}
         <label className="check">
@@ -1114,27 +1372,40 @@ function ProfileForm({ onboarding }: { onboarding: boolean }) {
             type="checkbox"
             name="abroad"
             defaultChecked={profile?.abroad}
-          />{" "}
+          />
           Show a public Based abroad badge
         </label>
         {onboarding && (
-          <label className="check">
-            <input type="checkbox" name="accept" required />
-            <span>
-              I accept the draft{" "}
-              <Link to="/terms" target="_blank">
-                Terms
-              </Link>{" "}
-              and{" "}
-              <Link to="/privacy" target="_blank">
-                Privacy Policy
-              </Link>{" "}
-              (draft-1).
-            </span>
-          </label>
+          <div>
+            <label className="check">
+              <input
+                {...fieldProps("accept")}
+                type="checkbox"
+                checked={fields.accept}
+                onChange={(e) => update("accept", e.target.checked)}
+                required
+              />
+              <span>
+                I accept the draft{" "}
+                <Link to="/terms" target="_blank">
+                  Terms
+                </Link>{" "}
+                and{" "}
+                <Link to="/privacy" target="_blank">
+                  Privacy Policy
+                </Link>{" "}
+                (draft-1).
+              </span>
+            </label>
+            {fieldError("accept")}
+          </div>
         )}
         <button className="button primary" disabled={busy || preview}>
-          {onboarding ? "Complete onboarding" : "Save profile"}
+          {busy
+            ? "Saving…"
+            : onboarding
+              ? "Complete onboarding"
+              : "Save profile"}
         </button>
       </form>
       {!onboarding && !preview && (

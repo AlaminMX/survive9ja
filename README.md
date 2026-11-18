@@ -67,3 +67,9 @@ Vite reads the public configuration during the Vercel build. Set the project URL
 Once a deployment has configuration, an empty feed is normal on a new project. A missing `public.feed` function indicates that the migrations still need to be applied in Supabase. After applying the four migrations and setting the Auth redirects for the live domain, use a test account to sign up, confirm your email, complete onboarding and publish the first discussion. See the pilot smoke test above before inviting members.
 
 The full Survive9ja logo is served at `/survive9ja-logo.svg`. The header and favicon share `/brand-mark.svg`.
+
+### Signup confirmation and branded email
+
+In Supabase **Authentication → URL Configuration**, set **Site URL** to the live site origin and add the full onboarding URL (for example, `https://survive9ja.vercel.app/onboarding`) to **Redirect URLs**. Add the equivalent `/onboarding` URL for each local or preview origin that sends signup emails. Keep the existing `/auth` and `/auth?reset=1` entries for Google sign-in and password recovery. Send a new confirmation email after changing the settings. The sign-in page has a **Resend confirmation** action.
+
+In Supabase **Authentication → SMTP Settings**, enable custom SMTP using an email provider with a verified sender address. Set **Sender name** to **Softwarebank Nigeria**. Enter the provider's host, port and SMTP credentials in Supabase. In **Authentication → Email Templates → Confirm signup**, set the subject to **Confirm your email for Survive9ja** and paste `supabase/templates/confirm-signup.html` as the body. Keep `{{ .ConfirmationURL }}` so Supabase verifies the email before redirecting to onboarding. If the provider has click tracking for transactional email, disable it for these authentication links. Test with a new account and check both the From name and the destination.
