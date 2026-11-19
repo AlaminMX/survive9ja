@@ -4,7 +4,7 @@ import {
   BookOpen,
   ChartNoAxesColumnIncreasing,
   ChevronRight,
-  MessageCircle,
+  UsersRound,
   Pencil,
   Store,
   Target,
@@ -49,7 +49,7 @@ export function rememberGistDiary(id: string) {
 }
 
 const destinations = [
-  { title: "The Square", to: "#gist-feed", icon: MessageCircle },
+  { title: "Circles", to: "/circles", icon: UsersRound },
   { title: "Diaries", to: "/diaries", icon: BookOpen },
   { title: "Business Hub", to: "/business", icon: Store },
   {
@@ -88,26 +88,30 @@ export function GistIntro() {
           </span>
         </div>
       </header>
+      <p className="gist-introduction">
+        Find your people in <Link to="/circles">Circles</Link>, read real
+        stories in <Link to="/diaries">Diaries</Link>, or share a gist with{" "}
+        <a href="#gist-feed">The Square</a>.
+      </p>
       <nav className="gist-destinations" aria-label="Explore Survive9ja">
-        {destinations.map(({ title, to, icon: Icon }, index) => {
-          const body = (
-            <>
-              <Icon size={25} strokeWidth={2.2} aria-hidden="true" />
-              <strong>{title}</strong>
-              <ChevronRight size={16} aria-hidden="true" />
-            </>
-          );
-          return index === 0 ? (
-            <a className="gist-tile gist-tile-selected" href={to} key={title}>
-              {body}
-            </a>
-          ) : (
-            <Link className="gist-tile" to={to} key={title}>
-              {body}
-            </Link>
-          );
-        })}
+        {destinations.map(({ title, to, icon: Icon }, index) => (
+          <Link
+            className={
+              index === 0 ? "gist-tile gist-tile-selected" : "gist-tile"
+            }
+            to={to}
+            key={title}
+          >
+            <Icon size={25} strokeWidth={2.2} aria-hidden="true" />
+            <strong>{title}</strong>
+            <ChevronRight size={16} aria-hidden="true" />
+          </Link>
+        ))}
       </nav>
+      <Link className="gist-compose" to="/new">
+        <Pencil size={23} strokeWidth={2.3} aria-hidden="true" /> Drop a gist{" "}
+        <ArrowUpRight size={21} aria-hidden="true" />
+      </Link>
       <Link
         className="gist-goal"
         to="/diaries"
@@ -144,10 +148,6 @@ export function GistIntro() {
           size={20}
           aria-hidden="true"
         />
-      </Link>
-      <Link className="gist-compose" to="/new">
-        <Pencil size={23} strokeWidth={2.3} aria-hidden="true" /> Drop a gist{" "}
-        <ArrowUpRight size={21} aria-hidden="true" />
       </Link>
     </>
   );
