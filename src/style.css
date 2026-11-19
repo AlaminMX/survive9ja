@@ -15,19 +15,20 @@
 }
 :root {
   color-scheme: light;
-  --paper: #f7f5ef;
-  --surface: #fff;
-  --ink: #202621;
-  --muted: #58645b;
-  --leaf: #174c39;
-  --leaf-ink: #174c39;
-  --leaf-soft: #e6efe6;
-  --on-leaf: #fff;
+  --paper: #fdf1dc;
+  --surface: #fff6e6;
+  --ink: #23180f;
+  --muted: #66574a;
+  --leaf: #1d620c;
+  --leaf-ink: #205b11;
+  --leaf-soft: #e8ebc4;
+  --on-leaf: #fff8e7;
   --terra: #a54834;
   --terra-soft: #f8eee7;
-  --line: #dedfd5;
+  --line: #e0ceb0;
+  --control-line: #967c57;
   --focus: #a54834;
-  --subtle: #faf9f5;
+  --subtle: #f8ead1;
   font-family: "DM Sans", sans-serif;
   background: var(--paper);
   color: var(--ink);
@@ -35,36 +36,38 @@
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --paper: #201f1b;
-  --surface: #282923;
-  --ink: #f5f0e5;
-  --muted: #c0c2b4;
-  --leaf: #a7d8ac;
-  --leaf-ink: #b4dfb7;
-  --leaf-soft: #34483b;
-  --on-leaf: #10291d;
+  --paper: #201a14;
+  --surface: #2d2419;
+  --ink: #fff0d9;
+  --muted: #d0c2ac;
+  --leaf: #b2e87f;
+  --leaf-ink: #c6ec9d;
+  --leaf-soft: #323c22;
+  --on-leaf: #18310d;
   --terra: #ffa88e;
   --terra-soft: #482e26;
-  --line: #454841;
-  --focus: #f2a184;
-  --subtle: #2d2c25;
+  --line: #544534;
+  --control-line: #9d8668;
+  --focus: #ffd16a;
+  --subtle: #322818;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --paper: #201f1b;
-    --surface: #282923;
-    --ink: #f5f0e5;
-    --muted: #c0c2b4;
-    --leaf: #a7d8ac;
-    --leaf-ink: #b4dfb7;
-    --leaf-soft: #34483b;
-    --on-leaf: #10291d;
+    --paper: #201a14;
+    --surface: #2d2419;
+    --ink: #fff0d9;
+    --muted: #d0c2ac;
+    --leaf: #b2e87f;
+    --leaf-ink: #c6ec9d;
+    --leaf-soft: #323c22;
+    --on-leaf: #18310d;
     --terra: #ffa88e;
     --terra-soft: #482e26;
-    --line: #454841;
-    --focus: #f2a184;
-    --subtle: #2d2c25;
+    --line: #544534;
+    --control-line: #9d8668;
+    --focus: #ffd16a;
+    --subtle: #322818;
   }
 }
 * {
@@ -118,7 +121,7 @@ h3 {
   transform: none;
 }
 .header {
-  background: var(--surface);
+  background: var(--paper);
   border-bottom: 1px solid var(--line);
   position: sticky;
   top: 0;
@@ -140,10 +143,10 @@ h3 {
   gap: 10px;
   align-items: center;
   font:
-    800 27px/1 "Bricolage Grotesque",
+    800 clamp(23px, 3vw, 33px)/1 "Bricolage Grotesque",
     Georgia,
     serif;
-  letter-spacing: -1.1px;
+  letter-spacing: -0.06em;
   min-height: 48px;
   color: var(--ink);
   white-space: nowrap;
@@ -156,7 +159,6 @@ h3 {
   height: 44px;
   flex: none;
   border-radius: 9px;
-  border: 1px solid var(--line);
 }
 .community-logo {
   display: block;
@@ -206,7 +208,7 @@ button.icon {
 .button {
   min-height: 44px;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: 999px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -217,8 +219,13 @@ button.icon {
   white-space: nowrap;
 }
 .primary {
-  background: var(--leaf);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--leaf), var(--paper) 10%),
+    var(--leaf)
+  );
   color: var(--on-leaf);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--on-leaf), transparent 74%);
 }
 .primary:hover {
   filter: brightness(1.13);
@@ -703,8 +710,9 @@ button.icon {
 }
 .narrow h1 {
   font-size: clamp(35px, 5vw, 60px);
-  letter-spacing: -0.06em;
-  margin: 8px 0 16px;
+  letter-spacing: -0.065em;
+  margin: 8px 0 18px;
+  font-weight: 800;
   overflow-wrap: anywhere;
 }
 .narrow > p,
@@ -810,7 +818,7 @@ button.icon {
   padding: 16px 18px;
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 16px;
   margin: 12px 0;
 }
 .notice.error {
@@ -939,7 +947,7 @@ dialog::backdrop {
     padding: 4px max(9px, env(safe-area-inset-right))
       calc(4px + env(safe-area-inset-bottom))
       max(9px, env(safe-area-inset-left));
-    background: var(--surface);
+    background: var(--paper);
     border-top: 1px solid var(--line);
   }
   .bottom-nav a {
@@ -1258,4 +1266,68 @@ html {
 .certificate-mark svg {
   width: 36px;
   height: 36px;
+}
+
+/* Shared paper, ink and print details across member and public pages. */
+.narrow > h1::after,
+.diary-intro h1::after {
+  content: "";
+  display: block;
+  width: clamp(48px, 13vw, 105px);
+  height: 5px;
+  margin-top: 9px;
+  border-radius: 56% 47% 50% 45%;
+  background: var(--leaf);
+  transform: rotate(-3deg);
+}
+.diary-intro h1::after,
+.diary-reader > h1::after {
+  background: var(--terra);
+}
+.reader .prose-body {
+  color: var(--ink);
+}
+.feature-page > .community-call,
+.narrow > .community-call {
+  box-shadow: 0 2px 0 color-mix(in srgb, var(--line) 45%, transparent);
+}
+.community-shortcuts {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 14px 0;
+}
+.form input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+.form textarea,
+.form select {
+  border-radius: 11px;
+}
+.form input:not([type="checkbox"]):not([type="radio"]):focus,
+.form textarea:focus,
+.form select:focus {
+  border-color: var(--leaf-ink);
+}
+.profile-progress,
+.avatar-editor,
+.review {
+  border-radius: 14px;
+}
+.survival-levels li {
+  border-radius: 16px;
+}
+@media (max-width: 520px) {
+  .button {
+    max-width: 100%;
+    white-space: normal;
+    text-align: center;
+  }
+  .community-shortcuts .button {
+    flex: 1 1 auto;
+  }
+}
+
+.form input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+.form textarea,
+.form select {
+  border-color: var(--control-line);
 }

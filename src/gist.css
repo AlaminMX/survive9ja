@@ -1,63 +1,4 @@
-/* Paper-and-ink treatment for the reviewable Gist template. */
-:root:has(.gist-layout) {
-  --paper: #fdf1dc;
-  --surface: #fff6e6;
-  --ink: #23180f;
-  --muted: #66574a;
-  --leaf: #1d620c;
-  --leaf-ink: #205b11;
-  --leaf-soft: #e8ebc4;
-  --on-leaf: #fff8e7;
-  --line: #e0ceb0;
-  --subtle: #f8ead1;
-  --focus: #a7450b;
-  --gist-accent: #e98a13;
-}
-
-:root[data-theme="dark"]:has(.gist-layout) {
-  --paper: #201a14;
-  --surface: #2d2419;
-  --ink: #fff0d9;
-  --muted: #d0c2ac;
-  --line: #544534;
-  --leaf: #b2e87f;
-  --leaf-ink: #c6ec9d;
-  --leaf-soft: #323c22;
-  --on-leaf: #18310d;
-  --subtle: #322818;
-  --focus: #ffd16a;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]):has(.gist-layout) {
-    --paper: #201a14;
-    --surface: #2d2419;
-    --ink: #fff0d9;
-    --muted: #d0c2ac;
-    --line: #544534;
-    --leaf: #b2e87f;
-    --leaf-ink: #c6ec9d;
-    --leaf-soft: #323c22;
-    --on-leaf: #18310d;
-    --subtle: #322818;
-    --focus: #ffd16a;
-  }
-}
-
-.gist-header {
-  background: var(--paper);
-}
-.gist-header .logo {
-  font-size: clamp(23px, 3vw, 33px);
-  letter-spacing: -0.06em;
-}
-.gist-header .logomark {
-  border: 0;
-  background: transparent;
-}
-.gist-header .head-new {
-  border-radius: 999px;
-}
+/* Gist homepage artwork, shortcuts and feed. */
 .gist-layout {
   grid-template-columns: minmax(0, 1fr);
   max-width: 1000px;
@@ -425,10 +366,7 @@
 .gist-entry-open:hover {
   background: var(--leaf-soft);
 }
-.gist-bottom-nav {
-  background: var(--paper);
-}
-.gist-bottom-nav a:nth-child(3) svg {
+.bottom-nav .nav-create svg {
   background: var(--leaf);
   color: var(--on-leaf);
   border-radius: 7px;

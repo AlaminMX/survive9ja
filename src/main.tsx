@@ -189,7 +189,6 @@ function Shell() {
       navigate("/auth", { replace: true, state: { confirmationFailed: true } });
   }, [callbackPending, loading, navigate, profile?.completed_at, session]);
   const location = useLocation();
-  const gistPreview = location.pathname === "/gist-preview";
   const [theme, setTheme] = useState(
     () => localStorage.getItem("survive-theme") || "system",
   );
@@ -206,7 +205,7 @@ function Shell() {
       <a className="skip" href="#main">
         Skip to content
       </a>
-      <header className={gistPreview ? "header gist-header" : "header"}>
+      <header className="header">
         <div className="header-inner">
           <Logo />
           <nav aria-label="Main navigation" className="main-nav">
@@ -243,18 +242,15 @@ function Shell() {
               {profile?.completed_at ? "My profile" : "Sign in"}
             </Link>
             <Link className="button primary head-new" to="/new">
-              <Plus size={18} /> New post
+              <Plus size={18} /> Drop a gist
             </Link>
           </div>
         </div>
       </header>
       <main id="main" tabIndex={-1}>
         <Routes>
-          <Route path="/" element={<Feed key="square" kind="square" />} />
-          <Route
-            path="/gist-preview"
-            element={<Feed key="gist-preview" kind="square" gist />}
-          />
+          <Route path="/" element={<Feed key="square" kind="square" gist />} />
+          <Route path="/gist-preview" element={<Navigate to="/" replace />} />
           <Route path="/diaries" element={<Feed key="diary" kind="diary" />} />
           <Route
             path="/post/:id"
@@ -337,11 +333,8 @@ function Shell() {
           />
         </Routes>
       </main>
-      <nav
-        className={gistPreview ? "bottom-nav gist-bottom-nav" : "bottom-nav"}
-        aria-label="Mobile navigation"
-      >
-        <NavLink to={gistPreview ? "/gist-preview" : "/"} end>
+      <nav className="bottom-nav" aria-label="Mobile navigation">
+        <NavLink to="/" end>
           <House />
           Home
         </NavLink>
@@ -349,7 +342,7 @@ function Shell() {
           <BookOpen />
           Diaries
         </NavLink>
-        <NavLink to="/new">
+        <NavLink className="nav-create" to="/new">
           <Plus />
           New
         </NavLink>
@@ -1448,6 +1441,7 @@ function ProfileForm({ onboarding }: { onboarding: boolean }) {
             : undefined
         }
       />
+      {!onboarding && <CommunityShortcuts />}
       <form
         ref={formRef}
         className="form"
@@ -1648,6 +1642,21 @@ function BusinessRoute() {
     />
   );
 }
+function CommunityShortcuts() {
+  return (
+    <nav className="community-shortcuts" aria-label="Community features">
+      <Link className="button secondary" to="/survival">
+        Survival Levels
+      </Link>
+      <Link className="button secondary" to="/business">
+        Business Hub
+      </Link>
+      <Link className="button secondary" to="/credits">
+        Credit Book
+      </Link>
+    </nav>
+  );
+}
 function Community() {
   const { profile } = useAccount();
   return (
@@ -1670,17 +1679,7 @@ function Community() {
           {profile?.completed_at ? "My profile" : "Join the community"}
         </Link>
       </div>
-      <Link to="/survival" className="button secondary">
-        Explore Survival Levels
-      </Link>
-      <div className="item-actions">
-        <Link className="button secondary" to="/business">
-          Business Hub
-        </Link>
-        <Link className="button secondary" to="/credits">
-          Credit Book
-        </Link>
-      </div>
+      <CommunityShortcuts />
       <img
         className="community-logo"
         src="/survive9ja-logo.svg"
