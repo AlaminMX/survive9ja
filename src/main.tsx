@@ -56,6 +56,7 @@ import { authCallback, db, message, preview, rpc } from "./api";
 import { validateProfile, type ProfileFields } from "./profile-validation";
 import { examples } from "./examples";
 import { AvatarEditor, uploadAvatar, type AvatarChange } from "./avatar";
+import { SurvivalGuide } from "./survival";
 import "./style.css";
 
 const settings = "/settings/profile";
@@ -264,6 +265,7 @@ function Shell() {
           />
           <Route path="/u/:username" element={<PublicProfile />} />
           <Route path="/community" element={<Community />} />
+          <Route path="/survival" element={<SurvivalGuide />} />
           <Route path="/admin" element={<Admin />} />
           {["guidelines", "terms", "privacy"].map((page) => (
             <Route
@@ -1525,6 +1527,9 @@ function Community() {
           {profile?.completed_at ? "My profile" : "Join the community"}
         </Link>
       </div>
+      <Link to="/survival" className="button secondary">
+        Explore Survival Levels
+      </Link>
       <img
         className="community-logo"
         src="/survive9ja-logo.svg"
