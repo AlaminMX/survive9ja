@@ -57,6 +57,18 @@ import { validateProfile, type ProfileFields } from "./profile-validation";
 import { examples } from "./examples";
 import { AvatarEditor, uploadAvatar, type AvatarChange } from "./avatar";
 import { SurvivalGuide } from "./survival";
+import {
+  Boost,
+  BusinessHub,
+  Certificate,
+  CreditDesk,
+  ExpansionModeration,
+  ManageBusiness,
+  PublicBadge,
+  Sponsored,
+  SurvivalDesk,
+  SurvivalVote,
+} from "./expansion";
 import "./style.css";
 
 const settings = "/settings/profile";
@@ -266,6 +278,40 @@ function Shell() {
           <Route path="/u/:username" element={<PublicProfile />} />
           <Route path="/community" element={<Community />} />
           <Route path="/survival" element={<SurvivalGuide />} />
+          <Route
+            path="/survival/awards"
+            element={
+              <Require>
+                <SurvivalDesk />
+              </Require>
+            }
+          />
+          <Route path="/certificate/:code" element={<Certificate />} />
+          <Route path="/business" element={<BusinessRoute />} />
+          <Route
+            path="/business/survivors"
+            element={
+              <Require>
+                <BusinessHub key="private" privateSpace member />
+              </Require>
+            }
+          />
+          <Route
+            path="/business/manage"
+            element={
+              <Require>
+                <ManageBusiness />
+              </Require>
+            }
+          />
+          <Route
+            path="/credits"
+            element={
+              <Require>
+                <CreditDesk />
+              </Require>
+            }
+          />
           <Route path="/admin" element={<Admin />} />
           {["guidelines", "terms", "privacy"].map((page) => (
             <Route
@@ -674,6 +720,7 @@ function Feed({ kind }: { kind: Kind }) {
             </details>
           )}
         </div>
+        {kind === "square" && Boolean(db) && <Sponsored kind="square" />}
         {!db && !preview && (
           <p className="notice">
             The community feed is unavailable. This deployment is missing its
@@ -1505,6 +1552,16 @@ function MyDiaries() {
     </section>
   );
 }
+function BusinessRoute() {
+  const { profile, session } = useAccount();
+  return (
+    <BusinessHub
+      member={Boolean(
+        profile?.completed_at && session?.user.email_confirmed_at,
+      )}
+    />
+  );
+}
 function Community() {
   const { profile } = useAccount();
   return (
@@ -1530,6 +1587,14 @@ function Community() {
       <Link to="/survival" className="button secondary">
         Explore Survival Levels
       </Link>
+      <div className="item-actions">
+        <Link className="button secondary" to="/business">
+          Business Hub
+        </Link>
+        <Link className="button secondary" to="/credits">
+          Credit Book
+        </Link>
+      </div>
       <img
         className="community-logo"
         src="/survive9ja-logo.svg"
@@ -1599,6 +1664,7 @@ function PublicProfile() {
       </div>
       {sample && <p className="notice">Fictional preview profile</p>}
       {profile.bio && <p>{profile.bio}</p>}
+      <PublicBadge username={profile.username} />
       {account.profile?.username === username && (
         <Link className="button secondary" to={settings}>
           Edit profile
@@ -2059,6 +2125,17 @@ function Detail({ kind }: { kind: Kind }) {
         {entry.category}
       </span>
       <h1>{entry.title}</h1>
+      {kind === "diary" && !entry.anonymous && !sample && (
+        <SurvivalVote
+          key={entry.id}
+          id={entry.id}
+          canVote={eligible}
+          owner={entry.owned}
+        />
+      )}
+      {kind === "square" && entry.owned && !sample && (
+        <Boost kind="square" id={entry.id} />
+      )}
       <Byline entry={entry} />
       {sample && <Status info="Fictional preview content" />}
       <div className="prose-body">{entry.body}</div>
@@ -2154,6 +2231,7 @@ function Admin() {
   return (
     <Require>
       <Moderation />
+      <ExpansionModeration />
     </Require>
   );
 }

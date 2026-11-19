@@ -39,11 +39,19 @@ export function SurvivalGuide() {
       </Link>
       <h1>Survival Levels</h1>
       <p>
-        See how Survive9ja plans to recognise practical knowledge shared through
-        the Diaries. Badges and certificates will be free. This preview explains
-        the programme and includes a practice scenario.
+        See how Survive9ja recognises practical knowledge shared through the
+        Diaries. Badges and certificates are free. This guide explains the
+        programme and includes a practice scenario.
       </p>
 
+      <div className="item-actions">
+        <Link className="button primary" to="/survival/awards">
+          Submit a Diary or view your award
+        </Link>
+        <Link className="button secondary" to="/business">
+          Business Hub
+        </Link>
+      </div>
       <ol className="survival-levels" aria-label="Survival level ladder">
         {levels.map(({ name, mark: Mark }, index) => (
           <li key={name}>
@@ -80,6 +88,14 @@ export function SurvivalGuide() {
           Survivors.
         </li>
       </ol>
+      <p>
+        Scoring starts with 20 points for a complete submission. Each correct
+        scenario adds 15. Useful votes add 2 and vouches add 3, with a combined
+        cap of 35 points. Level 2 requires 45 points and one correct answer.
+        Level 3 requires 65 points, two correct answers and feedback from two
+        members. Levels 4 and 5 require all three answers, moderator approval,
+        and 80 or 90 points respectively.
+      </p>
       <p>
         Certificates recognise community contributions. They carry no government
         accreditation or independent verification of hardship.

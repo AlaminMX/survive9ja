@@ -1212,3 +1212,50 @@ html {
   min-height: 18px;
   accent-color: var(--leaf);
 }
+
+.feature-page .item-actions {
+  margin-block: 12px;
+}
+.feature-page p {
+  overflow-wrap: anywhere;
+}
+.printable-certificate {
+  border: 3px double var(--leaf);
+  padding: 24px;
+  text-align: center;
+}
+.printable-certificate[data-level="2"] {
+  border-color: #7b6245;
+}
+.printable-certificate[data-level="3"] {
+  border-color: #1a706d;
+}
+.printable-certificate[data-level="4"] {
+  border-color: #824b3d;
+}
+.printable-certificate[data-level="5"] {
+  border-color: #9c711e;
+}
+@media print {
+  body:has(.printable-certificate) header,
+  body:has(.printable-certificate) .bottom-nav,
+  body:has(.printable-certificate) .skip,
+  body:has(.printable-certificate) .feature-page > :not(.printable-certificate),
+  .printable-certificate button {
+    display: none !important;
+  }
+  .printable-certificate {
+    background: white;
+    color: #202621;
+  }
+}
+.certificate-mark {
+  display: inline-grid;
+  place-items: center;
+  margin-bottom: 8px;
+  color: var(--leaf-ink);
+}
+.certificate-mark svg {
+  width: 36px;
+  height: 36px;
+}
