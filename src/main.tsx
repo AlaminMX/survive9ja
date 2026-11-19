@@ -718,38 +718,18 @@ function Feed({ kind, gist = false }: { kind: Kind; gist?: boolean }) {
             ) : (
               <strong>Browse stories</strong>
             )}
-            {!diary && !gist && (
-              <label className="location">
-                <MapPin size={15} />
-                <select
-                  aria-label="Filter by public location"
-                  value={location}
-                  onChange={(e) => change(() => setLocation(e.target.value))}
-                >
-                  <option value="all">All locations</option>
-                  <option value="nigeria">In Nigeria</option>
-                  <option value="diaspora">Diaspora</option>
-                </select>
-                <ChevronDown size={15} />
-              </label>
-            )}
-            {gist && (
-              <button
-                className="gist-filter-button"
-                type="button"
-                aria-controls="gist-feed-filters"
-                aria-expanded={showFilters}
-                onClick={() => setShowFilters(!showFilters)}
-              >
-                Filters <ChevronDown size={16} />
-              </button>
-            )}
+            <button
+              className="feed-filter-button"
+              type="button"
+              aria-controls="feed-filters"
+              aria-expanded={showFilters}
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              Filters <ChevronDown size={16} />
+            </button>
           </div>
-          <div
-            id={gist ? "gist-feed-filters" : undefined}
-            hidden={gist && !showFilters}
-          >
-            {gist && (
+          <div id="feed-filters" hidden={!showFilters}>
+            {!diary && (
               <label className="location">
                 <MapPin size={15} />
                 <select

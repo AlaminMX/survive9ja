@@ -75,7 +75,6 @@
 }
 body {
   margin: 0;
-  min-width: 320px;
 }
 button,
 select,
@@ -348,13 +347,22 @@ button.icon {
 .location svg:last-child {
   right: 7px;
 }
+.feed-controls .location {
+  margin: 8px 0;
+}
+.feed-filter-button {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 9px;
+  font-size: 13px;
+  font-weight: 700;
+}
 .categories {
   display: flex;
+  flex-wrap: wrap;
   gap: 7px;
-  overflow: auto;
-  scrollbar-width: thin;
-  padding: 3px 2px;
-  margin: -3px -2px;
 }
 .categories button {
   padding: 0 12px;
@@ -705,7 +713,13 @@ button.icon {
   display: none;
 }
 .narrow {
-  width: min(710px, calc(100% - 38px));
+  width: min(
+    710px,
+    calc(
+      100% - max(19px, env(safe-area-inset-left)) -
+        max(19px, env(safe-area-inset-right))
+    )
+  );
   margin: 35px auto 60px;
 }
 .narrow h1 {
@@ -743,6 +757,7 @@ button.icon {
 }
 .form {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   margin: 20px 0;
 }
@@ -840,6 +855,11 @@ button.icon {
   flex-wrap: wrap;
   color: var(--muted);
 }
+.profile-meta > :not(.avatar) {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
 .profile-meta .avatar {
   width: 45px;
   height: 45px;
@@ -914,15 +934,21 @@ dialog::backdrop {
     gap: 5px;
   }
 }
-@media (max-width: 800px) {
+@media (max-width: 900px) {
   .layout {
     grid-template-columns: minmax(0, 1fr);
-    width: min(650px, calc(100% - 38px));
+    width: min(
+      650px,
+      calc(
+        100% - max(19px, env(safe-area-inset-left)) -
+          max(19px, env(safe-area-inset-right))
+      )
+    );
     gap: 24px;
     padding-top: 28px;
   }
   .sidebar {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .header-inner {
     min-height: 62px;
@@ -943,7 +969,7 @@ dialog::backdrop {
     left: 0;
     right: 0;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     padding: 4px max(9px, env(safe-area-inset-right))
       calc(4px + env(safe-area-inset-bottom))
       max(9px, env(safe-area-inset-left));
@@ -976,7 +1002,10 @@ dialog::backdrop {
 }
 @media (max-width: 520px) {
   .layout {
-    width: calc(100% - 32px);
+    width: calc(
+      100% - max(16px, env(safe-area-inset-left)) -
+        max(16px, env(safe-area-inset-right))
+    );
     padding-top: 25px;
   }
   .sidebar {
@@ -1020,9 +1049,6 @@ dialog::backdrop {
   .logo {
     font-size: 25px;
   }
-  .categories {
-    margin-right: -2px;
-  }
   .header-inner {
     gap: 8px;
   }
@@ -1039,7 +1065,7 @@ dialog::backdrop {
 html {
   scroll-padding-top: calc(84px + env(safe-area-inset-top));
 }
-@media (max-width: 800px) {
+@media (max-width: 900px) {
   html {
     scroll-padding-top: calc(70px + env(safe-area-inset-top));
     scroll-padding-bottom: calc(66px + env(safe-area-inset-bottom));
@@ -1330,4 +1356,93 @@ html {
 .form textarea,
 .form select {
   border-color: var(--control-line);
+}
+
+/* Let member-supplied text and form choices wrap inside narrow layouts. */
+:is(main, dialog) :is(h1, h2, h3, p, li, dd, summary, a, code) {
+  overflow-wrap: anywhere;
+}
+:is(main, dialog) :is(form, fieldset, label, input, select, textarea) {
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+.form textarea {
+  resize: vertical;
+}
+.feed-controls .toolbar,
+.tabs {
+  flex-wrap: wrap;
+}
+.entry-bottom {
+  flex-wrap: wrap;
+}
+.byline > * {
+  min-width: 0;
+}
+.item-actions > .button {
+  max-width: 100%;
+  white-space: normal;
+  text-align: center;
+}
+
+@media (max-width: 359px) {
+  .header-inner {
+    gap: 5px;
+    padding-inline: max(9px, env(safe-area-inset-left))
+      max(9px, env(safe-area-inset-right));
+  }
+  .logo {
+    font-size: clamp(17px, 6vw, 22px);
+    gap: 5px;
+  }
+  .logomark {
+    width: 34px;
+    height: 34px;
+  }
+  .signin {
+    padding-inline: 6px;
+    font-size: 13px;
+  }
+  .head-actions {
+    gap: 3px;
+  }
+}
+
+/* A compact or keyboard-reduced viewport needs its full height for content. */
+@media (max-width: 900px) {
+  body:has(
+    main
+      :is(
+        input:not([type="checkbox"]):not([type="radio"]):not(
+            [type="range"]
+          ):not([type="file"]),
+        textarea
+      ):focus
+  ) {
+    padding-bottom: 0;
+  }
+  body:has(
+      main
+        :is(
+          input:not([type="checkbox"]):not([type="radio"]):not(
+              [type="range"]
+            ):not([type="file"]),
+          textarea
+        ):focus
+    )
+    .bottom-nav {
+    position: static;
+  }
+}
+@media (max-width: 900px) and (max-height: 500px) {
+  .header,
+  .bottom-nav {
+    position: static;
+  }
+  body {
+    padding-bottom: 0;
+  }
+  html {
+    scroll-padding-block: 8px;
+  }
 }
