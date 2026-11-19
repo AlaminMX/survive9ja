@@ -57,6 +57,7 @@ import { validateProfile, type ProfileFields } from "./profile-validation";
 import { examples } from "./examples";
 import { AvatarEditor, uploadAvatar, type AvatarChange } from "./avatar";
 import { SurvivalGuide } from "./survival";
+import { GistIntro, rememberGistDiary } from "./gist";
 import {
   Boost,
   BusinessHub,
@@ -70,6 +71,7 @@ import {
   SurvivalVote,
 } from "./expansion";
 import "./style.css";
+import "./gist.css";
 
 const settings = "/settings/profile";
 const entryPath = (entry: Entry) =>
@@ -187,6 +189,7 @@ function Shell() {
       navigate("/auth", { replace: true, state: { confirmationFailed: true } });
   }, [callbackPending, loading, navigate, profile?.completed_at, session]);
   const location = useLocation();
+  const gistPreview = location.pathname === "/gist-preview";
   const [theme, setTheme] = useState(
     () => localStorage.getItem("survive-theme") || "system",
   );
@@ -203,7 +206,7 @@ function Shell() {
       <a className="skip" href="#main">
         Skip to content
       </a>
-      <header className="header">
+      <header className={gistPreview ? "header gist-header" : "header"}>
         <div className="header-inner">
           <Logo />
           <nav aria-label="Main navigation" className="main-nav">
@@ -248,6 +251,10 @@ function Shell() {
       <main id="main" tabIndex={-1}>
         <Routes>
           <Route path="/" element={<Feed key="square" kind="square" />} />
+          <Route
+            path="/gist-preview"
+            element={<Feed key="gist-preview" kind="square" gist />}
+          />
           <Route path="/diaries" element={<Feed key="diary" kind="diary" />} />
           <Route
             path="/post/:id"
@@ -330,8 +337,11 @@ function Shell() {
           />
         </Routes>
       </main>
-      <nav className="bottom-nav" aria-label="Mobile navigation">
-        <NavLink to="/" end>
+      <nav
+        className={gistPreview ? "bottom-nav gist-bottom-nav" : "bottom-nav"}
+        aria-label="Mobile navigation"
+      >
+        <NavLink to={gistPreview ? "/gist-preview" : "/"} end>
           <House />
           Home
         </NavLink>
@@ -358,13 +368,19 @@ const initials = (name: string) =>
     .map((word) => word[0])
     .join("")
     .toUpperCase();
-function Avatar({ profile }: { profile: Profile | null }) {
+function Avatar({
+  profile,
+  initialsOnly = false,
+}: {
+  profile: Profile | null;
+  initialsOnly?: boolean;
+}) {
   const [broken, setBroken] = useState(false);
   const name = profile?.display_name || "Anonymous Survivor";
   const tone = (name.charCodeAt(0) + name.charCodeAt(1)) % 4;
   return (
     <span aria-hidden="true" className={`avatar tone-${tone}`}>
-      {profile?.avatar_url && !broken ? (
+      {profile?.avatar_url && !broken && !initialsOnly ? (
         <img
           alt=""
           src={profile.avatar_url}
@@ -400,7 +416,41 @@ function Byline({ entry }: { entry: Entry }) {
 }
 const categoryClass = (name: string) =>
   name.toLowerCase().replaceAll(" ", "-").replaceAll("&", "and");
-function EntryCard({ entry }: { entry: Entry }) {
+function EntryCard({ entry, gist = false }: { entry: Entry; gist?: boolean }) {
+  if (gist) {
+    const author = entry.author;
+    const path = entryPath(entry);
+    return (
+      <article className="gist-entry">
+        <Avatar profile={author} initialsOnly />
+        <div className="gist-entry-copy">
+          <div className="gist-entry-meta">
+            {author ? (
+              <Link to={"/u/" + author.username}>{author.display_name}</Link>
+            ) : (
+              <strong>Anonymous Survivor</strong>
+            )}
+            <span>·</span>
+            <time dateTime={entry.created_at}>{age(entry.created_at)}</time>
+          </div>
+          <h2>
+            <Link to={path}>{entry.title}</Link>
+          </h2>
+          <Link className="gist-replies" to={path + "#replies"}>
+            <MessageCircle size={17} aria-hidden="true" />
+            {entry.replies} {entry.replies === 1 ? "reply" : "replies"}
+          </Link>
+        </div>
+        <Link
+          className="gist-entry-open"
+          aria-label={"Read " + entry.title}
+          to={path}
+        >
+          <ArrowUpRight size={18} />
+        </Link>
+      </article>
+    );
+  }
   return (
     <article className={`entry ${entry.kind}`}>
       <div className="entry-top">
@@ -515,8 +565,9 @@ function Sidebar({
     </aside>
   );
 }
-function Feed({ kind }: { kind: Kind }) {
+function Feed({ kind, gist = false }: { kind: Kind; gist?: boolean }) {
   const diary = kind === "diary";
+  const [showFilters, setShowFilters] = useState(false);
   const [category, setCategory] = useState("");
   const [location, setLocation] = useState("all");
   const [ranking, setRanking] = useState("latest");
@@ -622,29 +673,33 @@ function Feed({ kind }: { kind: Kind }) {
     );
   const shown = preview ? local : entries;
   return (
-    <div className="layout">
+    <div className={gist ? "layout gist-layout" : "layout"}>
       <section className="feed min-w-0">
-        <div className={`intro ${diary ? "diary-intro" : ""}`}>
-          <div className="eyebrow">
-            {diary ? <Feather size={15} /> : <span className="status-dot" />}
-            {diary ? "FIRSTHAND STORIES" : "THE NIGERIAN COMMUNITY SPACE"}
+        {gist ? (
+          <GistIntro />
+        ) : (
+          <div className={`intro ${diary ? "diary-intro" : ""}`}>
+            <div className="eyebrow">
+              {diary ? <Feather size={15} /> : <span className="status-dot" />}
+              {diary ? "FIRSTHAND STORIES" : "THE NIGERIAN COMMUNITY SPACE"}
+            </div>
+            <h1>
+              {diary ? "The Diaries" : "The Square"}
+              <span>.</span>
+            </h1>
+            <p>
+              {diary
+                ? "Firsthand stories about finding our way through life."
+                : "Discuss. Express. Build. Survive."}
+            </p>
+            {diary && (
+              <Link className="button primary story-button" to="/diaries/new">
+                <Feather size={16} /> Share your story
+              </Link>
+            )}
           </div>
-          <h1>
-            {diary ? "The Diaries" : "The Square"}
-            <span>.</span>
-          </h1>
-          <p>
-            {diary
-              ? "Firsthand stories about finding our way through life."
-              : "Discuss. Express. Build. Survive."}
-          </p>
-          {diary && (
-            <Link className="button primary story-button" to="/diaries/new">
-              <Feather size={16} /> Share your story
-            </Link>
-          )}
-        </div>
-        <div className="feed-controls">
+        )}
+        <div className="feed-controls" id={gist ? "gist-feed" : undefined}>
           <div className="toolbar">
             {!diary ? (
               <div className="tabs" aria-label="Sort discussions">
@@ -670,7 +725,7 @@ function Feed({ kind }: { kind: Kind }) {
             ) : (
               <strong>Browse stories</strong>
             )}
-            {!diary && (
+            {!diary && !gist && (
               <label className="location">
                 <MapPin size={15} />
                 <select
@@ -685,22 +740,53 @@ function Feed({ kind }: { kind: Kind }) {
                 <ChevronDown size={15} />
               </label>
             )}
+            {gist && (
+              <button
+                className="gist-filter-button"
+                type="button"
+                aria-controls="gist-feed-filters"
+                aria-expanded={showFilters}
+                onClick={() => setShowFilters(!showFilters)}
+              >
+                Filters <ChevronDown size={16} />
+              </button>
+            )}
           </div>
           <div
-            className="categories"
-            aria-label={diary ? "Story tags" : "Discussion categories"}
+            id={gist ? "gist-feed-filters" : undefined}
+            hidden={gist && !showFilters}
           >
-            {["", ...(diary ? tags : categories)].map((name) => (
-              <button
-                key={name}
-                aria-pressed={category === name}
-                onClick={() => {
-                  if (category !== name) change(() => setCategory(name));
-                }}
-              >
-                {name || "All topics"}
-              </button>
-            ))}
+            {gist && (
+              <label className="location">
+                <MapPin size={15} />
+                <select
+                  aria-label="Filter by public location"
+                  value={location}
+                  onChange={(e) => change(() => setLocation(e.target.value))}
+                >
+                  <option value="all">All locations</option>
+                  <option value="nigeria">In Nigeria</option>
+                  <option value="diaspora">Diaspora</option>
+                </select>
+                <ChevronDown size={15} />
+              </label>
+            )}
+            <div
+              className="categories"
+              aria-label={diary ? "Story tags" : "Discussion categories"}
+            >
+              {["", ...(diary ? tags : categories)].map((name) => (
+                <button
+                  key={name}
+                  aria-pressed={category === name}
+                  onClick={() => {
+                    if (category !== name) change(() => setCategory(name));
+                  }}
+                >
+                  {name || "All topics"}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
         <div className="feed-label">
@@ -756,7 +842,7 @@ function Feed({ kind }: { kind: Kind }) {
           </div>
         )}
         {shown.map((entry) => (
-          <EntryCard key={entry.id} entry={entry} />
+          <EntryCard key={entry.id} entry={entry} gist={gist} />
         ))}
         {more && !error && (
           <button
@@ -2018,6 +2104,10 @@ function Detail({ kind }: { kind: Kind }) {
     : null;
   const resultHere = result?.id === id ? result : undefined;
   const thread = sample ? { entry: sample, replies: [] } : resultHere?.thread;
+  const diaryOpened = kind === "diary" ? thread?.entry.id : undefined;
+  useEffect(() => {
+    if (diaryOpened) rememberGistDiary(diaryOpened);
+  }, [diaryOpened]);
   const isReady = Boolean(thread);
   useEffect(() => {
     if (isReady && hash === "#replies") {
