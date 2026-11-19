@@ -947,18 +947,24 @@ function Auth() {
         });
         if (result.error) throw result.error;
         setInfo(
-          "Check your inbox to confirm your email. The link takes you back here to create your community profile.",
+          "Check your inbox and spam folder for a confirmation link. If you already have an account, sign in. If you’re still waiting on a link, use Resend confirmation.",
         );
       } else {
         const result = await db.auth.signInWithPassword({ email, password });
         if (result.error) throw result.error;
       }
     } catch (e) {
-      setError(
-        e instanceof Error
-          ? e.message
-          : String((e as { message?: string })?.message || message(e)),
-      );
+      const problem = message(e);
+      if (
+        (mode === "register" || mode === "resend") &&
+        /error sending confirmation email/i.test(problem)
+      ) {
+        setError(
+          "We couldn’t send the confirmation email. Please try Resend confirmation later.",
+        );
+      } else {
+        setError(problem);
+      }
     } finally {
       setBusy(false);
     }
@@ -1074,15 +1080,30 @@ function Auth() {
             </button>
           </>
         ) : (
-          <button
-            onClick={() => {
-              setMode("login");
-              setError("");
-              setInfo("");
-            }}
-          >
-            Back to sign in
-          </button>
+          <>
+            {mode === "register" && (info || error) && (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  setMode("resend");
+                  setError("");
+                  setInfo("");
+                }}
+              >
+                Resend confirmation
+              </button>
+            )}
+            <button
+              onClick={() => {
+                setMode("login");
+                setError("");
+                setInfo("");
+              }}
+            >
+              Back to sign in
+            </button>
+          </>
         )}
       </div>
     </Narrow>
