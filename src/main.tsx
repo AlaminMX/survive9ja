@@ -1969,7 +1969,7 @@ function Editor({ kind }: { kind: Kind }) {
           ? "Edit your story"
           : diary
             ? "Share your story"
-            : "Start a discussion"
+            : "Start a gist"
       }
       back={diary ? "/diaries" : "/"}
     >
