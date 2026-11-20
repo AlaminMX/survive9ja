@@ -44,7 +44,7 @@ import type { Session } from "@supabase/supabase-js";
 import {
   age,
   categories,
-  reactionsFor,
+  diaryReactions,
   reasons,
   states,
   tags,
@@ -65,6 +65,7 @@ import {
   CirclePage,
   CirclesDirectory,
   CreateCircle,
+  newCircleDestination,
 } from "./circles";
 import {
   Boost,
@@ -257,7 +258,7 @@ function Shell() {
       </header>
       <main id="main" tabIndex={-1}>
         <Routes>
-          <Route path="/" element={<Feed key="square" kind="square" gist />} />
+          <Route path="/" element={<Feed key={`square-${session?.user.id ?? "public"}`} kind="square" gist />} />
           <Route path="/gist-preview" element={<Navigate to="/" replace />} />
           <Route path="/diaries" element={<Feed key="diary" kind="diary" />} />
           <Route
@@ -441,6 +442,65 @@ function EntryCircle({ entry }: { entry: Entry }) {
 }
 const categoryClass = (name: string) =>
   name.toLowerCase().replaceAll(" ", "-").replaceAll("&", "and");
+function likeCount(count: number) {
+  return `${count} ${count === 1 ? "like" : "likes"}`;
+}
+
+function LikeButton({ item, path }: { item: Entry; path: string }) {
+  const { session, profile, loading } = useAccount();
+  const eligible = Boolean(session?.user.email_confirmed_at && profile?.completed_at);
+  if (!loading && !eligible)
+    return (
+      <Link className="text-button like-button" to="/auth" state={{ next: path }} aria-label={`Sign in to like (${likeCount(item.reactions)})`}>
+        <Heart size={16} aria-hidden="true" /> Like <span>{item.reactions}</span>
+      </Link>
+    );
+  return (
+    <MemberLike
+      key={JSON.stringify([session?.user.id, item.id, item.mine, item.reactions])}
+      item={item}
+      disabled={loading}
+    />
+  );
+}
+
+function MemberLike({ item, disabled }: { item: Entry; disabled: boolean }) {
+  // Every legacy Square reaction represents a single existing like.
+  const [liked, setLiked] = useState(Boolean(item.mine));
+  const [count, setCount] = useState(item.reactions);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  return (
+    <span className="like-control">
+      <button
+        className="text-button like-button"
+        type="button"
+        aria-pressed={liked}
+        aria-label={`Like (${likeCount(count)})`}
+        disabled={disabled || busy}
+        onClick={async () => {
+          if (busy) return;
+          setBusy(true);
+          setError("");
+          try {
+            await rpc("react_entry", { p_id: item.id, p_reaction: liked ? null : "Support" });
+            setLiked(!liked);
+            setCount((value) => Math.max(0, value + (liked ? -1 : 1)));
+          } catch (reason) {
+            setError(message(reason));
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        <Heart size={16} fill={liked ? "currentColor" : "none"} aria-hidden="true" />
+        Like <span>{count}</span>
+      </button>
+      {error && <span className="notice error" role="alert">{error}</span>}
+    </span>
+  );
+}
+
 function EntryCard({ entry, gist = false }: { entry: Entry; gist?: boolean }) {
   if (gist) {
     const author = entry.author;
@@ -473,6 +533,7 @@ function EntryCard({ entry, gist = false }: { entry: Entry; gist?: boolean }) {
               <MessageCircle size={17} aria-hidden="true" />
               {entry.replies} {entry.replies === 1 ? "reply" : "replies"}
             </Link>
+            <LikeButton item={entry} path={path} />
             <ShareConversation path={path} title={entry.title} />
           </div>
         </div>
@@ -515,15 +576,13 @@ function EntryCard({ entry, gist = false }: { entry: Entry; gist?: boolean }) {
             <MessageCircle size={16} />
             {entry.replies}
           </Link>
-          <Link
-            to={entryPath(entry)}
-            aria-label={`${entry.kind === "diary" ? entry.relate : entry.reactions} ${entry.kind === "diary" ? "people relate" : "reactions"}`}
-          >
-            <Heart size={16} />
-            {entry.kind === "diary"
-              ? `${entry.relate} relate`
-              : entry.reactions}
-          </Link>
+          {entry.kind === "square" ? (
+            <LikeButton item={entry} path={entryPath(entry)} />
+          ) : (
+            <Link to={entryPath(entry)} aria-label={`${entry.relate} people relate`}>
+              <Heart size={16} /> {entry.relate} relate
+            </Link>
+          )}
           <ShareConversation path={entryPath(entry)} title={entry.title} />
         </div>
       </div>
@@ -821,7 +880,7 @@ function Feed({ kind, gist = false }: { kind: Kind; gist?: boolean }) {
                 <CircleHelp size={14} /> How ranking works
               </summary>
               <p>
-                Latest shows newest posts first. Trending weighs reactions and
+                Latest shows newest posts first. Trending weighs {diary ? "reactions" : "likes"} and
                 replies, then gives newer discussions more weight. It looks back
                 seven days.
               </p>
@@ -1938,7 +1997,7 @@ function Editor({ kind }: { kind: Kind }) {
   }, [id]);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!diary && destination === null) return;
+    if (busy || (!diary && destination === null)) return;
     const form = new FormData(event.currentTarget);
     const fields = {
       p_title: String(form.get("title")).trim(),
@@ -1948,6 +2007,15 @@ function Editor({ kind }: { kind: Kind }) {
     setBusy(true);
     setError("");
     try {
+      if (!diary && destination === newCircleDestination) {
+        const slug = await rpc<string>("create_circle", {
+          ...fields,
+          p_name: String(form.get("name") || "").trim(),
+          p_description: String(form.get("description") || "").trim(),
+        });
+        navigate("/circles/" + slug);
+        return;
+      }
       const saved = await (id
         ? rpc<string>("edit_diary", { ...fields, p_id: id })
         : !diary && destination
@@ -2065,7 +2133,9 @@ function Editor({ kind }: { kind: Kind }) {
                   ? "Save changes"
                   : diary
                     ? "Publish story"
-                    : "Publish discussion"}
+                    : destination === newCircleDestination
+                      ? "Create Circle and post"
+                      : "Publish gist"}
               </button>
             </>
           )}
@@ -2230,10 +2300,10 @@ function Detail({ kind }: { kind: Kind }) {
       setBusy(false);
     }
   }
-  function actions(item: Entry) {
+  function actions(item: Entry, conversationActions?: ReactNode) {
     return (
       <div className="item-actions">
-        {reactionsFor(kind).map((reaction) => (
+        {diary ? diaryReactions.map((reaction) => (
           <button
             key={reaction}
             className="button secondary"
@@ -2248,7 +2318,8 @@ function Detail({ kind }: { kind: Kind }) {
           >
             {reaction}
           </button>
-        ))}
+        )) : <LikeButton item={item} path={entryPath(entry)} />}
+        {conversationActions}
         {eligible ? (
           <Report id={item.id} />
         ) : (
@@ -2268,8 +2339,7 @@ function Detail({ kind }: { kind: Kind }) {
       <article className="reply" key={reply.id}>
         <Byline entry={reply} />
         <p className="prose-body">{reply.body}</p>
-        {actions(reply)}
-        {eligible && !reply.parent_id && (
+        {actions(reply, eligible && !reply.parent_id && (
           <button
             className="text-button"
             onClick={() => {
@@ -2277,9 +2347,9 @@ function Detail({ kind }: { kind: Kind }) {
               document.getElementById("reply-body")?.focus();
             }}
           >
-            Reply
+            <MessageCircle size={16} aria-hidden="true" /> Reply
           </button>
-        )}
+        ))}
         {!reply.parent_id &&
           replies
             .filter((child) => child.parent_id === reply.id)
@@ -2316,13 +2386,13 @@ function Detail({ kind }: { kind: Kind }) {
           Edit story
         </Link>
       )}
-      <p className="muted">
-        {diary
-          ? `${entry.relate} people relate`
-          : `${entry.reactions} reactions`}
-      </p>
-      <ShareConversation path={entryPath(entry)} title={entry.title} />
-      {actions(entry)}
+      {diary && <p className="muted">{entry.relate} people relate</p>}
+      {actions(entry, <>
+        <Link className="text-button" to={entryPath(entry) + "#replies"}>
+          <MessageCircle size={16} aria-hidden="true" /> {entry.replies} {entry.replies === 1 ? "reply" : "replies"}
+        </Link>
+        <ShareConversation path={entryPath(entry)} title={entry.title} />
+      </>)}
       <Status error={error} />
       <section id="replies" className="reply-area">
         <h2>Replies ({entry.replies})</h2>

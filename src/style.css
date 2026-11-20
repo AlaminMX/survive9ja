@@ -1535,3 +1535,30 @@ html {
 .share-status:empty {
   margin: 0;
 }
+
+.like-button {
+  min-height: 44px;
+  white-space: nowrap;
+}
+.like-control {
+  display: inline-flex;
+  align-items: flex-start;
+  flex-direction: column;
+  min-width: 0;
+}
+.like-button[aria-pressed="true"] {
+  color: var(--terra);
+}
+.entry-bottom .activity {
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.circle-created {
+  margin-block: 12px 24px;
+  padding-block-end: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.circle-created ul {
+  padding: 0;
+  list-style: none;
+}
