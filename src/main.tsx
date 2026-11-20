@@ -80,6 +80,7 @@ import {
   SurvivalDesk,
   SurvivalVote,
 } from "./expansion";
+import { profilePath, profileReturn } from "./profile-navigation";
 import "./style.css";
 import "./gist.css";
 
@@ -192,7 +193,7 @@ function Shell() {
     if (authCallback.type === "recovery")
       navigate("/auth?reset=1", { replace: true });
     else if (session && !authCallback.failed)
-      navigate(profile?.completed_at ? settings : "/onboarding", {
+      navigate(profile?.completed_at ? profilePath : "/onboarding", {
         replace: true,
       });
     else
@@ -247,7 +248,7 @@ function Shell() {
             </button>
             <Link
               className="signin"
-              to={profile?.completed_at ? settings : "/auth"}
+              to={profile?.completed_at ? profilePath : "/auth"}
             >
               {profile?.completed_at ? "My profile" : "Sign in"}
             </Link>
@@ -288,7 +289,8 @@ function Shell() {
             path={settings}
             element={<ProfileEditor key="edit" onboarding={false} />}
           />
-          <Route path="/u/:username" element={<PublicProfile />} />
+          <Route path={profilePath} element={<Require><ProfileOverview own /></Require>} />
+          <Route path="/u/:username" element={<ProfileOverview />} />
           <Route path="/community" element={<Community />} />
           <Route path="/circles" element={<CirclesRoute />} />
           <Route
@@ -366,7 +368,7 @@ function Shell() {
           <Plus />
           New
         </NavLink>
-        <NavLink to={profile?.completed_at ? settings : "/community"}>
+        <NavLink to={profilePath}>
           <UserRound />
           Profile
         </NavLink>
@@ -957,16 +959,18 @@ function Narrow({
   title,
   children,
   back,
+  backLabel = "Back",
 }: {
   title: string;
   children: ReactNode;
   back?: string;
+  backLabel?: string;
 }) {
   return (
     <section className="narrow">
       {back && (
         <Link className="back" to={back}>
-          <ArrowLeft size={16} /> Back
+          <ArrowLeft size={16} /> {backLabel}
         </Link>
       )}
       <h1>{title}</h1>
@@ -1195,7 +1199,7 @@ function Auth() {
   if (session && !loading && (mode === "login" || mode === "register"))
     return (
       <Navigate
-        to={profile?.completed_at ? next || settings : "/onboarding"}
+        to={profile?.completed_at ? next || profilePath : "/onboarding"}
         state={profile?.completed_at ? undefined : { next }}
         replace
       />
@@ -1366,6 +1370,7 @@ function ProfileForm({ onboarding }: { onboarding: boolean }) {
   const navigate = useNavigate();
   const location = useLocation();
   const afterOnboarding = (location.state as { next?: string } | null)?.next;
+  const editReturn = profileReturn(location.state) || profilePath;
   const errors = validateProfile(fields, onboarding);
   const nigeria = fields.country.trim().toLowerCase() === "nigeria";
   const steps = [
@@ -1378,7 +1383,7 @@ function ProfileForm({ onboarding }: { onboarding: boolean }) {
   ];
   const complete = steps.filter((step) => step.completed).length;
   if (onboarding && profile?.completed_at)
-    return <Navigate to={settings} replace />;
+    return <Navigate to={profilePath} replace />;
 
   function update(key: keyof ProfileFields, value: string | boolean) {
     if (key === "username") setUsernameError("");
@@ -1477,7 +1482,7 @@ function ProfileForm({ onboarding }: { onboarding: boolean }) {
       navigate(
         onboarding && afterOnboarding
           ? afterOnboarding
-          : "/u/" + fields.username,
+          : onboarding ? profilePath : editReturn,
       );
     } catch (e) {
       const problem = message(e);
@@ -1498,7 +1503,8 @@ function ProfileForm({ onboarding }: { onboarding: boolean }) {
   return (
     <Narrow
       title={onboarding ? "Make yourself at home" : "Edit your profile"}
-      back="/"
+      back={onboarding ? "/" : editReturn}
+      backLabel={onboarding ? undefined : "Back to profile"}
     >
       <p>
         Your username, display name and location details appear on your public
@@ -1672,20 +1678,6 @@ function ProfileForm({ onboarding }: { onboarding: boolean }) {
               : "Save profile"}
         </button>
       </form>
-      {!onboarding && !preview && (
-        <button
-          className="button secondary google"
-          onClick={() =>
-            void db?.auth.signOut().then(({ error: e }) => {
-              if (e) setError(e.message);
-              else navigate("/");
-            })
-          }
-        >
-          Sign out
-        </button>
-      )}
-      {!onboarding && !preview && <MyDiaries />}
     </Narrow>
   );
 }
@@ -1722,7 +1714,7 @@ function MyDiaries() {
               ) : (
                 <>
                   {" "}
-                  · <Link to={"/diaries/edit/" + row.id}>Edit story</Link>
+                  · <Link to={"/diaries/edit/" + row.id} state={{ fromProfile: profilePath }}>Edit story</Link>
                 </>
               )}
             </li>
@@ -1796,7 +1788,7 @@ function Community() {
         </p>
         <Link
           className="button primary"
-          to={profile?.completed_at ? settings : "/auth"}
+          to={profile?.completed_at ? profilePath : "/auth"}
         >
           {profile?.completed_at ? "My profile" : "Join the community"}
         </Link>
@@ -1814,9 +1806,15 @@ function Community() {
     </Narrow>
   );
 }
-function PublicProfile() {
-  const { username } = useParams();
+function ProfileOverview({ own = false }: { own?: boolean }) {
+  const params = useParams();
   const account = useAccount();
+  const { state } = useLocation();
+  const navigate = useNavigate();
+  const username = own ? account.profile?.username : params.username;
+  const returnPath = profileReturn(state);
+  const [signOutError, setSignOutError] = useState("");
+  const [signingOut, setSigningOut] = useState(false);
   const [result, setResult] = useState<{
     profile: Profile | null;
     entries: Entry[];
@@ -1849,42 +1847,96 @@ function PublicProfile() {
     ? examples.find((e) => e.author?.username === username)?.author
     : null;
   const current = result?.key === username ? result : undefined;
-  const profile = sample || current?.profile;
+  const profile = own ? account.profile : sample || current?.profile;
   if (!profile)
     return (
       <Narrow
         title={db && !current ? "Loading profile…" : "Profile unavailable"}
-        back="/"
+        back={returnPath || "/"}
+        backLabel={returnPath ? "Back to profile" : undefined}
       >
         <Status error={current?.error} />
       </Narrow>
     );
+
+  const owner = account.profile?.username === profile.username;
+  const source = own ? profilePath : "/u/" + profile.username;
+  const publicActivity = sample
+    ? examples.filter((entry) => entry.author?.username === username)
+    : current?.entries || [];
+
   return (
-    <Narrow title={profile.display_name} back="/">
-      <div className="profile-meta">
-        <Avatar key={profile.avatar_url} profile={profile} />
-        <strong>@{profile.username}</strong>
-        <span>
-          {[profile.region, profile.country].filter(Boolean).join(", ")}
-        </span>
-        {profile.abroad && <span className="tag">Based abroad</span>}
-      </div>
-      {sample && <p className="notice">Fictional preview profile</p>}
-      {profile.bio && <p>{profile.bio}</p>}
-      <PublicBadge username={profile.username} />
-      {account.profile?.username === username && (
-        <Link className="button secondary" to={settings}>
-          Edit profile
+    <section className="narrow profile-page">
+      {!own && (
+        <Link className="back" to={returnPath || "/"}>
+          <ArrowLeft size={16} /> {returnPath ? "Back to profile" : "The Square"}
         </Link>
       )}
-      <h2>Public activity</h2>
-      {(sample
-        ? examples.filter((e) => e.author?.username === username)
-        : current?.entries || []
-      ).map((entry) => (
-        <EntryCard key={entry.id} entry={entry} />
-      ))}
-    </Narrow>
+      <header className="profile-summary">
+        <div className="profile-identity">
+          <Avatar key={profile.avatar_url} profile={profile} />
+          <div>
+            <h1>{profile.display_name}</h1>
+            <p className="profile-handle">@{profile.username}</p>
+          </div>
+        </div>
+        <div className="profile-location">
+          <span><MapPin size={16} aria-hidden="true" /> {[profile.region, profile.country].filter(Boolean).join(", ")}</span>
+          {profile.abroad && <span className="tag">Based abroad</span>}
+        </div>
+        {profile.bio && <p className="prose-body profile-bio">{profile.bio}</p>}
+        {sample && <p className="notice">Fictional preview profile</p>}
+        <div className="item-actions profile-actions">
+          {owner && <Link className="button primary" to={settings} state={{ fromProfile: source }}>Edit profile</Link>}
+          {own && <Link className="button secondary" to={"/u/" + profile.username} state={{ fromProfile: source }}>View public profile</Link>}
+          <PublicBadge key={profile.username} username={profile.username} fromProfile={source} />
+        </div>
+      </header>
+      <section className="profile-activity" aria-labelledby="profile-activity-title">
+        <h2 id="profile-activity-title">Public activity</h2>
+        <Status error={current?.error} />
+        {db && !current && <p role="status">Loading activity…</p>}
+        {(sample || (current && !current.error)) && !publicActivity.length && (
+          <p className="muted">Public gists and diaries will appear here.</p>
+        )}
+        {publicActivity.length > 0 && (
+          <ul className="profile-activity-list">
+            {publicActivity.map((entry) => (
+              <li key={entry.id}>
+                <span className="muted">{entry.kind === "diary" ? "Diary" : "Gist"} · {entry.category} · <time dateTime={entry.created_at}>{age(entry.created_at)}</time></span>
+                <Link to={entryPath(entry)} state={{ fromProfile: source }}>{entry.title}</Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+      {own && (
+        <>
+          <MyDiaries />
+          <Status error={signOutError} />
+          <button
+            className="button secondary"
+            disabled={signingOut}
+            onClick={async () => {
+              if (!db) return;
+              setSigningOut(true);
+              setSignOutError("");
+              try {
+                const { error } = await db.auth.signOut();
+                if (error) throw error;
+                navigate("/", { replace: true });
+              } catch (reason) {
+                setSignOutError(message(reason));
+              } finally {
+                setSigningOut(false);
+              }
+            }}
+          >
+            Sign out
+          </button>
+        </>
+      )}
+    </section>
   );
 }
 function Legal({ page }: { page: string }) {
@@ -2029,7 +2081,7 @@ function Editor({ kind }: { kind: Kind }) {
               p_kind: kind,
               p_anonymous: anonymousAvailable && form.has("anonymous"),
             }));
-      navigate((diary ? "/diary/" : "/post/") + saved);
+      navigate((id && profileReturn(location.state)) || (diary ? "/diary/" : "/post/") + saved);
     } catch (e) {
       setError(message(e));
     } finally {
@@ -2045,7 +2097,8 @@ function Editor({ kind }: { kind: Kind }) {
             ? "Share your story"
             : "Start a gist"
       }
-      back={diary ? "/diaries" : "/"}
+      back={profileReturn(location.state) || (diary ? "/diaries" : "/")}
+      backLabel={profileReturn(location.state) ? "Back to profile" : undefined}
     >
       <p>
         {diary
@@ -2218,7 +2271,7 @@ function Report({ id }: { id: string }) {
 }
 function Detail({ kind }: { kind: Kind }) {
   const { id } = useParams();
-  const { hash } = useLocation();
+  const { hash, state } = useLocation();
   const [result, setResult] = useState<{
     thread: Thread | null;
     error: string;
@@ -2233,7 +2286,8 @@ function Detail({ kind }: { kind: Kind }) {
     session?.user.email_confirmed_at && profile?.completed_at,
   );
   const diary = kind === "diary";
-  const back = diary ? "/diaries" : "/";
+  const returnPath = profileReturn(state);
+  const back = returnPath || (diary ? "/diaries" : "/");
   useEffect(() => {
     if (!db) return;
     let active = true;
@@ -2272,6 +2326,7 @@ function Detail({ kind }: { kind: Kind }) {
       <Narrow
         title={db && !resultHere ? "Loading…" : "Content unavailable"}
         back={back}
+        backLabel={returnPath ? "Back to profile" : undefined}
       >
         <Status error={resultHere?.error} />
         {resultHere?.error && (
@@ -2359,7 +2414,7 @@ function Detail({ kind }: { kind: Kind }) {
   return (
     <article className={`reader narrow ${diary ? "diary-reader" : ""}`}>
       <Link className="back" to={back}>
-        <ArrowLeft size={16} /> {diary ? "The Diaries" : "The Square"}
+        <ArrowLeft size={16} /> {returnPath ? "Back to profile" : diary ? "The Diaries" : "The Square"}
       </Link>
       <span className={`tag ${categoryClass(entry.category)}`}>
         {entry.category}
@@ -2381,13 +2436,13 @@ function Detail({ kind }: { kind: Kind }) {
       {sample && <Status info="Fictional preview content" />}
       <div className="prose-body"><MentionText text={entry.body} /></div>
       {entry.owned && diary && (
-        <Link className="button secondary" to={"/diaries/edit/" + entry.id}>
+        <Link className="button secondary" to={"/diaries/edit/" + entry.id} state={state}>
           Edit story
         </Link>
       )}
       {diary && <p className="muted">{entry.relate} people relate</p>}
       {actions(entry, <>
-        <Link className="text-button" to={entryPath(entry) + "#replies"}>
+        <Link className="text-button" to={entryPath(entry) + "#replies"} state={state}>
           <MessageCircle size={16} aria-hidden="true" /> {entry.replies} {entry.replies === 1 ? "reply" : "replies"}
         </Link>
         <ShareConversation path={entryPath(entry)} title={entry.title} />
