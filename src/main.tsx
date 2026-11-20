@@ -81,6 +81,7 @@ import {
   SurvivalVote,
 } from "./expansion";
 import { profilePath, profileReturn } from "./profile-navigation";
+import { AdminDashboard } from "./admin";
 import "./style.css";
 import "./gist.css";
 
@@ -2515,11 +2516,16 @@ type Review = {
 };
 type Queue = { items: Review[]; open: number; hidden: number; banned: number };
 function Admin() {
+  const { session } = useAccount();
   return (
     <Require>
-      <Moderation />
-      <ExpansionModeration />
-      <CircleModeration />
+      {session && (
+        <AdminDashboard
+          key={session.user.id}
+          token={session.access_token}
+          moderation={<><Moderation /><ExpansionModeration /><CircleModeration /></>}
+        />
+      )}
     </Require>
   );
 }
