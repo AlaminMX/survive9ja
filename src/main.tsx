@@ -58,6 +58,7 @@ import { examples } from "./examples";
 import { AvatarEditor, uploadAvatar, type AvatarChange } from "./avatar";
 import { SurvivalGuide } from "./survival";
 import { ShareConversation } from "./share";
+import { MentionField, MentionText } from "./mentions";
 import { GistIntro, rememberGistDiary } from "./gist";
 import {
   CircleDestination,
@@ -565,7 +566,7 @@ function EntryCard({ entry, gist = false }: { entry: Entry; gist?: boolean }) {
       <h2>
         <Link to={entryPath(entry)}>{entry.title}</Link>
       </h2>
-      <p className="excerpt">{entry.body}</p>
+      <p className="excerpt"><MentionText text={entry.body} /></p>
       <div className="entry-bottom">
         <Byline entry={entry} />
         <div className="activity">
@@ -2097,16 +2098,14 @@ function Editor({ kind }: { kind: Kind }) {
                   ))}
                 </select>
               </label>
-              <label>
-                {diary ? "Your story" : "Discussion"}
-                <textarea
-                  name="body"
-                  required
-                  rows={diary ? 13 : 8}
-                  maxLength={diary ? 20000 : 6000}
-                  defaultValue={entry?.body}
-                />
-              </label>
+              <MentionField
+                label={diary ? "Your story" : "Discussion"}
+                name="body"
+                required
+                rows={diary ? 13 : 8}
+                maxLength={diary ? 20000 : 6000}
+                defaultValue={entry?.body}
+              />
               {diary && !id && (
                 <div>
                   <label className="check">
@@ -2338,7 +2337,7 @@ function Detail({ kind }: { kind: Kind }) {
     return (
       <article className="reply" key={reply.id}>
         <Byline entry={reply} />
-        <p className="prose-body">{reply.body}</p>
+        <p className="prose-body"><MentionText text={reply.body} /></p>
         {actions(reply, eligible && !reply.parent_id && (
           <button
             className="text-button"
@@ -2380,7 +2379,7 @@ function Detail({ kind }: { kind: Kind }) {
       )}
       <Byline entry={entry} />
       {sample && <Status info="Fictional preview content" />}
-      <div className="prose-body">{entry.body}</div>
+      <div className="prose-body"><MentionText text={entry.body} /></div>
       {entry.owned && diary && (
         <Link className="button secondary" to={"/diaries/edit/" + entry.id}>
           Edit story
@@ -2416,11 +2415,6 @@ function Detail({ kind }: { kind: Kind }) {
               }
             }}
           >
-            <label htmlFor="reply-body">
-              {target
-                ? `Reply to ${target.author?.display_name}`
-                : "Add a reply"}
-            </label>
             {target && (
               <button
                 type="button"
@@ -2430,7 +2424,8 @@ function Detail({ kind }: { kind: Kind }) {
                 Cancel reply
               </button>
             )}
-            <textarea
+            <MentionField
+              label={target ? `Reply to ${target.author?.display_name ?? "this reply"}` : "Add a reply"}
               id="reply-body"
               name="body"
               rows={4}

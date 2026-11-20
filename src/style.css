@@ -1562,3 +1562,38 @@ html {
   padding: 0;
   list-style: none;
 }
+
+.mention-field {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+}
+.mention-field textarea {
+  width: 100%;
+}
+.mention-suggestions {
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.mention-option {
+  width: 100%;
+  min-height: 44px;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.mention-option[data-selected="true"] {
+  outline: 2px solid currentColor;
+  outline-offset: -2px;
+}
+.mention-link {
+  color: var(--leaf-ink);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

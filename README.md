@@ -110,3 +110,7 @@ Verified, onboarded members can create up to two Circles daily. Their first disc
 Apply `20261120071925_member_circle_management.sql` after the Circles migration. **Your Circles** lists the active Circles you created. Owners can rename their Circles without changing existing links.
 
 Circle reports are private and appear in the admin dashboard. Archiving closes the Circle to new posts and hides its page and name. Published discussions remain in The Square and can be moderated individually. Restoring reopens the Circle with its followers and discussions intact.
+
+## Member mentions
+
+Apply `20261120075039_member_mention_search.sql` for username suggestions. In a gist, diary, or reply, type `@` followed by at least two username characters. Choose a suggestion with the arrow keys and Enter or tap it. Published `@username` text links to the public profile. Mentions do not send alerts.
