@@ -3,6 +3,7 @@ import { ArrowLeft, MessageCircle, Plus, UsersRound } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { db, message, rpc } from "./api";
 import { categories, type Entry } from "./data";
+import { MentionField } from "./mentions";
 
 type Circle = {
   slug: string;
@@ -527,10 +528,7 @@ export function CreateCircle() {
               ))}
             </select>
           </label>
-          <label>
-            What do you want to ask?
-            <textarea name="body" required maxLength={6000} rows={4} />
-          </label>
+          <MentionField label="What do you want to ask?" name="body" required maxLength={6000} rows={4} />
         </fieldset>
         <button className="button primary" disabled={busy}>
           {busy ? "Creating…" : "Create Circle and post"}
