@@ -1658,3 +1658,69 @@ html {
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+
+.admin-dashboard {
+  max-width: 980px;
+}
+.admin-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.admin-heading svg {
+  flex: none;
+  color: var(--leaf-ink);
+}
+.admin-dashboard .tabs {
+  flex-wrap: wrap;
+}
+.admin-dashboard .tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+}
+.admin-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 155px), 1fr));
+  gap: 10px;
+}
+.admin-stats div,
+.admin-account {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 14px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.admin-stats dt,
+.admin-account-dates dt {
+  color: var(--muted);
+  font-size: .875rem;
+}
+.admin-stats dd,
+.admin-account-dates dd {
+  margin: 0;
+}
+.admin-stats dd {
+  font-size: 1.65rem;
+  font-weight: 750;
+}
+.admin-account-list {
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+.admin-account :is(h3, p) {
+  margin: 0 0 4px;
+}
+.admin-account-dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+}
+.admin-danger {
+  color: var(--terra);
+}

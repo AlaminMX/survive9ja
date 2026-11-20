@@ -114,3 +114,9 @@ Circle reports are private and appear in the admin dashboard. Archiving closes t
 ## Member mentions
 
 Apply `20261120075039_member_mention_search.sql` for username suggestions. In a gist, diary, or reply, type `@` followed by at least two username characters. Choose a suggestion with the arrow keys and Enter or tap it. Published `@username` text links to the public profile. Mentions do not send alerts.
+
+## Admin dashboard
+
+Open `/admin` with a confirmed, onboarded administrator account. The account directory includes incomplete signups and shows last sign-in. **Open sessions** counts members with a stored Auth session that has no expiry timestamp or expires in the future. It is an operational session view and can include offline members. The dashboard records moderator changes and deletions in the audit log. Moderators retain access to the existing moderation tools.
+
+Apply the `admin_accounts.sql` migration in order. The Vercel deletion endpoint uses `SUPABASE_SERVICE_ROLE_KEY` or `SUPABASE_SECRET_KEY` server-side to remove managed profile photos before the protected database operation deletes the account, its sessions and associated content. If asset cleanup is interrupted, retry the same account. Administrator accounts are protected, and accounts with Paystack records require separate reconciliation to preserve payment history.
