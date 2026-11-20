@@ -95,12 +95,18 @@ Set `PAYSTACK_SECRET_KEY`, `PAYSTACK_MODE`, and `SUPABASE_SERVICE_ROLE_KEY` or `
 
 Credit packs are inactive until configured. A project owner can insert approved packs through the SQL editor using the columns `id`, `credits`, `amount_kobo` and `active` on `community_private.credit_packs`. Store amounts in kobo. Activate packs after verifying checkout on a test project. The server verifies Paystack signatures and independently checks each payment before crediting the ledger. The credit entry is unique per payment reference.
 
+## Square likes
+
+Square discussions and replies have one Like button. All earlier Square reaction types count as existing likes, so members can remove their previous reaction with the same button. New likes use the existing reaction storage and eligibility rules. Diary reactions keep their existing labels.
+
 ## Circles
 
-Circles are public places for recurring topics. Browse at `/circles`, follow a Circle to save it under **Following**, or start a Circle with its first discussion. Discussion posts in Circles also appear in The Square with their Circle name. The **Drop a gist** composer asks where the discussion belongs before opening the writing fields. Personal stories still use The Diaries.
+Circles are public places for recurring topics. Browse at `/circles`, follow a Circle to save it under **Following**, or start a Circle with its first discussion. Discussion posts in Circles also appear in The Square with their Circle name. The **Drop a gist** composer asks where the discussion belongs before opening the writing fields. Choose **Other · create a Circle** to publish the gist as the first post in a new Circle. Personal stories still use The Diaries.
 
 Apply the `circles.sql` migration in filename order after the community expansion migration in the environment you are reviewing. It seeds Campus Life, First Job & NYSC and Money & Everyday Life with one Survive9ja starter discussion each. Starter discussions have system attribution and can receive replies or be hidden by moderators. They do not belong to a user account.
 
 Verified, onboarded members can create up to two Circles daily. Their first discussion uses the existing discussion quota. Creating the Circle, publishing its discussion and following it happen in one database transaction. Visitors can browse. Following, publishing and reporting require membership.
+
+Apply `20261120071925_member_circle_management.sql` after the Circles migration. **Your Circles** lists the active Circles you created. Owners can rename their Circles without changing existing links.
 
 Circle reports are private and appear in the admin dashboard. Archiving closes the Circle to new posts and hides its page and name. Published discussions remain in The Square and can be moderated individually. Restoring reopens the Circle with its followers and discussions intact.

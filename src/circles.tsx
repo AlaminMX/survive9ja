@@ -10,6 +10,7 @@ type Circle = {
   description: string;
   starter: boolean;
   following: boolean;
+  owned: boolean;
 };
 type CircleResult = { circle: Circle; posts: Entry[] };
 
@@ -60,9 +61,37 @@ export function CirclesDirectory({ member }: { member: boolean }) {
   const [query, setQuery] = useState("");
   const [following, setFollowing] = useState(false);
   const { rows, error } = useCircles(following && member, query);
+  const [created, setCreated] = useState<{ rows?: Circle[]; error?: string }>({});
+  useEffect(() => {
+    if (!db || !member) return;
+    let active = true;
+    void rpc<Circle[]>("my_created_circles").then(
+      (rows) => { if (active) setCreated({ rows }); },
+      (reason) => { if (active) setCreated({ error: message(reason) }); },
+    );
+    return () => { active = false; };
+  }, [member]);
 
   return (
     <CircleShell title="Circles">
+      {member && (
+        <section className="circle-created" aria-labelledby="created-circles">
+          <h2 id="created-circles">Your Circles</h2>
+          {created.error ? (
+            <p className="notice error" role="alert">{created.error}</p>
+          ) : !created.rows ? (
+            <p role="status">Loading your Circles…</p>
+          ) : created.rows.length === 0 ? (
+            <p className="muted">Circles you create will appear here.</p>
+          ) : (
+            <ul>
+              {created.rows.map((circle) => (
+                <li key={circle.slug}><Link className="text-button" to={"/circles/" + circle.slug}>{circle.name} ↗</Link></li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
       <p>
         Find your people and come back to the conversations you care about.
         Browse any public Circle, or follow one to find it easily later.
@@ -157,6 +186,7 @@ export function CirclePage({
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
   const [busy, setBusy] = useState(false);
+  const [renaming, setRenaming] = useState(false);
   useEffect(() => {
     if (!db || !slug) return;
     let active = true;
@@ -267,6 +297,44 @@ export function CirclePage({
               </Link>
             )}
           </div>
+          {member && circle.owned && (
+            renaming ? (
+              <form className="form" onSubmit={async (event) => {
+                event.preventDefault();
+                if (busy) return;
+                const name = String(new FormData(event.currentTarget).get("name") || "").trim();
+                setBusy(true);
+                setError("");
+                setInfo("");
+                try {
+                  const saved = await rpc<string>("rename_circle", { p_slug: circle.slug, p_name: name });
+                  setData((current) => current ? { ...current, circle: { ...current.circle, name: saved } } : current);
+                  setPosts((current) => current.map((post) =>
+                    post.circle?.slug === circle.slug
+                      ? { ...post, circle: { ...post.circle, name: saved } }
+                      : post
+                  ));
+                  setRenaming(false);
+                  setInfo("Circle renamed.");
+                } catch (reason) {
+                  setError(message(reason));
+                } finally {
+                  setBusy(false);
+                }
+              }}>
+                <label>
+                  Circle name
+                  <input name="name" defaultValue={circle.name} required minLength={3} maxLength={60} />
+                </label>
+                <div className="item-actions">
+                  <button className="button primary" disabled={busy}>Save name</button>
+                  <button className="text-button" type="button" disabled={busy} onClick={() => setRenaming(false)}>Cancel</button>
+                </div>
+              </form>
+            ) : (
+              <button className="text-button" type="button" onClick={() => setRenaming(true)}>Rename Circle</button>
+            )
+          )}
           <h2>Discussions</h2>
           {posts.length === 0 && (
             <p className="notice">
@@ -329,6 +397,8 @@ export function CirclePage({
   );
 }
 
+export const newCircleDestination = "__new_circle";
+
 export function CircleDestination({
   selected,
   onChange,
@@ -352,7 +422,7 @@ export function CircleDestination({
             Choose where to post
           </option>
           <option value="">The Square · everyone</option>
-          {selected && !rows?.some((circle) => circle.slug === selected) && (
+          {selected && selected !== newCircleDestination && !rows?.some((circle) => circle.slug === selected) && (
             <option value={selected}>{selected.replaceAll("-", " ")}</option>
           )}
           {rows?.map((circle) => (
@@ -360,8 +430,10 @@ export function CircleDestination({
               {circle.name}
             </option>
           ))}
+          <option value={newCircleDestination}>Other · create a Circle</option>
         </select>
       </label>
+      {selected === newCircleDestination && <CircleFields />}
       <p className="muted">Circle discussions also appear in The Square.</p>
       {error && (
         <p className="muted">
@@ -373,6 +445,33 @@ export function CircleDestination({
         <span aria-hidden="true">↗</span>
       </Link>
     </fieldset>
+  );
+}
+
+function CircleFields() {
+  return (
+    <>
+        <label>
+          Circle name
+          <input
+            name="name"
+            placeholder="e.g. UNILAG Campus Life"
+            required
+            minLength={3}
+            maxLength={60}
+          />
+        </label>
+        <label>
+          What’s this Circle about?
+          <textarea
+            name="description"
+            required
+            minLength={12}
+            maxLength={280}
+            rows={3}
+          />
+        </label>
+    </>
   );
 }
 
@@ -412,26 +511,7 @@ export function CreateCircle() {
             .finally(() => setBusy(false));
         }}
       >
-        <label>
-          Circle name
-          <input
-            name="name"
-            placeholder="e.g. UNILAG Campus Life"
-            required
-            minLength={3}
-            maxLength={60}
-          />
-        </label>
-        <label>
-          What’s this Circle about?
-          <textarea
-            name="description"
-            required
-            minLength={12}
-            maxLength={280}
-            rows={3}
-          />
-        </label>
+        <CircleFields />
         <fieldset className="circle-destination">
           <legend>First conversation</legend>
           <label>

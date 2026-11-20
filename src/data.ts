@@ -54,10 +54,7 @@ export type Entry = {
   circle?: { slug: string; name: string } | null;
   system_seed?: boolean;
 };
-export const reactionsFor = (kind: Kind) =>
-  kind === "diary"
-    ? ["I relate", "Been there", "Respect"]
-    : ["Facts", "Real", "Support"];
+export const diaryReactions = ["I relate", "Been there", "Respect"];
 export const states = [
   "Abia",
   "Adamawa",
