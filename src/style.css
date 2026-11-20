@@ -1446,3 +1446,61 @@ html {
     scroll-padding-block: 8px;
   }
 }
+
+.circle-label {
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  padding-inline: 8px;
+  border-radius: 999px;
+  color: var(--leaf-ink);
+  background: var(--leaf-soft);
+  font-size: 12px;
+  font-weight: 750;
+}
+.circle-label svg {
+  flex: none;
+}
+.circle-label:hover {
+  text-decoration: underline;
+}
+.circle-directory {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+}
+.circle-directory-card {
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  margin: 0;
+}
+.circle-directory-card > svg {
+  color: var(--leaf-ink);
+  margin-bottom: 5px;
+}
+.circle-directory-card h2 {
+  font-size: 23px;
+}
+.circle-search {
+  align-items: end;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.circle-destination {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  padding: 14px;
+}
+.circle-destination legend {
+  font-weight: 800;
+  padding-inline: 4px;
+}
+.circle-report {
+  margin-top: 18px;
+}

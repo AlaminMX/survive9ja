@@ -51,6 +51,8 @@ export type Entry = {
   parent_id?: string | null;
   hidden?: boolean;
   cursor_score?: string;
+  circle?: { slug: string; name: string } | null;
+  system_seed?: boolean;
 };
 export const reactionsFor = (kind: Kind) =>
   kind === "diary"

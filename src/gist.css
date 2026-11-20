@@ -440,3 +440,23 @@
     scroll-margin-top: 8px;
   }
 }
+
+.gist-introduction {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: clamp(14px, 2vw, 18px);
+}
+.gist-introduction a {
+  color: var(--leaf-ink);
+  font-weight: 750;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.gist-destinations + .gist-compose {
+  margin-top: 12px;
+}
+.gist-feed-heading {
+  scroll-margin-top: 16px;
+  margin: 16px 0 6px;
+  font-size: clamp(19px, 3vw, 28px);
+}

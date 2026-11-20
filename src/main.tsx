@@ -59,6 +59,13 @@ import { AvatarEditor, uploadAvatar, type AvatarChange } from "./avatar";
 import { SurvivalGuide } from "./survival";
 import { GistIntro, rememberGistDiary } from "./gist";
 import {
+  CircleDestination,
+  CircleModeration,
+  CirclePage,
+  CirclesDirectory,
+  CreateCircle,
+} from "./circles";
+import {
   Boost,
   BusinessHub,
   Certificate,
@@ -280,6 +287,16 @@ function Shell() {
           />
           <Route path="/u/:username" element={<PublicProfile />} />
           <Route path="/community" element={<Community />} />
+          <Route path="/circles" element={<CirclesRoute />} />
+          <Route
+            path="/circles/new"
+            element={
+              <Require>
+                <CreateCircle />
+              </Require>
+            }
+          />
+          <Route path="/circles/:slug" element={<CirclesRoute detail />} />
           <Route path="/survival" element={<SurvivalGuide />} />
           <Route
             path="/survival/awards"
@@ -364,12 +381,14 @@ const initials = (name: string) =>
 function Avatar({
   profile,
   initialsOnly = false,
+  label,
 }: {
   profile: Profile | null;
   initialsOnly?: boolean;
+  label?: string;
 }) {
   const [broken, setBroken] = useState(false);
-  const name = profile?.display_name || "Anonymous Survivor";
+  const name = label || profile?.display_name || "Anonymous Survivor";
   const tone = (name.charCodeAt(0) + name.charCodeAt(1)) % 4;
   return (
     <span aria-hidden="true" className={`avatar tone-${tone}`}>
@@ -390,11 +409,16 @@ function Byline({ entry }: { entry: Entry }) {
   const { author } = entry;
   return (
     <div className="byline">
-      <Avatar profile={author} />
+      <Avatar
+        profile={author}
+        label={entry.system_seed ? "Survive9ja" : undefined}
+      />
       {author ? (
         <Link to={"/u/" + author.username}>{author.display_name}</Link>
       ) : (
-        <strong>Anonymous Survivor</strong>
+        <strong>
+          {entry.system_seed ? "Survive9ja" : "Anonymous Survivor"}
+        </strong>
       )}
       {author?.region && (
         <>
@@ -407,6 +431,13 @@ function Byline({ entry }: { entry: Entry }) {
     </div>
   );
 }
+function EntryCircle({ entry }: { entry: Entry }) {
+  return entry.circle ? (
+    <Link className="circle-label" to={"/circles/" + entry.circle.slug}>
+      <UsersRound size={14} aria-hidden="true" /> {entry.circle.name}
+    </Link>
+  ) : null;
+}
 const categoryClass = (name: string) =>
   name.toLowerCase().replaceAll(" ", "-").replaceAll("&", "and");
 function EntryCard({ entry, gist = false }: { entry: Entry; gist?: boolean }) {
@@ -415,13 +446,20 @@ function EntryCard({ entry, gist = false }: { entry: Entry; gist?: boolean }) {
     const path = entryPath(entry);
     return (
       <article className="gist-entry">
-        <Avatar profile={author} initialsOnly />
+        <Avatar
+          profile={author}
+          initialsOnly
+          label={entry.system_seed ? "Survive9ja" : undefined}
+        />
         <div className="gist-entry-copy">
+          <EntryCircle entry={entry} />
           <div className="gist-entry-meta">
             {author ? (
               <Link to={"/u/" + author.username}>{author.display_name}</Link>
             ) : (
-              <strong>Anonymous Survivor</strong>
+              <strong>
+                {entry.system_seed ? "Survive9ja" : "Anonymous Survivor"}
+              </strong>
             )}
             <span>·</span>
             <time dateTime={entry.created_at}>{age(entry.created_at)}</time>
@@ -458,6 +496,7 @@ function EntryCard({ entry, gist = false }: { entry: Entry; gist?: boolean }) {
           <ArrowUpRight size={17} />
         </Link>
       </div>
+      <EntryCircle entry={entry} />
       <h2>
         <Link to={entryPath(entry)}>{entry.title}</Link>
       </h2>
@@ -692,7 +731,12 @@ function Feed({ kind, gist = false }: { kind: Kind; gist?: boolean }) {
             )}
           </div>
         )}
-        <div className="feed-controls" id={gist ? "gist-feed" : undefined}>
+        {gist && (
+          <h2 className="gist-feed-heading" id="gist-feed">
+            In The Square
+          </h2>
+        )}
+        <div className="feed-controls">
           <div className="toolbar">
             {!diary ? (
               <div className="tabs" aria-label="Sort discussions">
@@ -914,7 +958,7 @@ function Require({
       <Navigate
         to="/auth"
         state={{
-          next: location.pathname,
+          next: onboarding ? undefined : location.pathname + location.search,
           confirmationFailed: onboarding && authCallback.failed,
         }}
         replace
@@ -927,7 +971,13 @@ function Require({
       </Narrow>
     );
   if (!onboarding && !profile?.completed_at)
-    return <Navigate to="/onboarding" replace />;
+    return (
+      <Navigate
+        to="/onboarding"
+        state={{ next: location.pathname + location.search }}
+        replace
+      />
+    );
   return children;
 }
 function PasswordField({
@@ -1081,6 +1131,7 @@ function Auth() {
     return (
       <Navigate
         to={profile?.completed_at ? next || settings : "/onboarding"}
+        state={profile?.completed_at ? undefined : { next }}
         replace
       />
     );
@@ -1248,6 +1299,8 @@ function ProfileForm({ onboarding }: { onboarding: boolean }) {
   const [busy, setBusy] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const navigate = useNavigate();
+  const location = useLocation();
+  const afterOnboarding = (location.state as { next?: string } | null)?.next;
   const errors = validateProfile(fields, onboarding);
   const nigeria = fields.country.trim().toLowerCase() === "nigeria";
   const steps = [
@@ -1356,7 +1409,11 @@ function ProfileForm({ onboarding }: { onboarding: boolean }) {
         p_privacy: fields.accept ? "draft-1" : null,
       });
       await refresh();
-      navigate("/u/" + fields.username);
+      navigate(
+        onboarding && afterOnboarding
+          ? afterOnboarding
+          : "/u/" + fields.username,
+      );
     } catch (e) {
       const problem = message(e);
       if (problem === "That username is already taken.") {
@@ -1622,9 +1679,29 @@ function BusinessRoute() {
     />
   );
 }
+function CirclesRoute({ detail = false }: { detail?: boolean }) {
+  const { slug } = useParams();
+  const { session, profile } = useAccount();
+  const member = Boolean(
+    session?.user.email_confirmed_at && profile?.completed_at,
+  );
+  return detail ? (
+    <CirclePage
+      key={slug}
+      member={member}
+      renderPost={(entry) => <EntryCard key={entry.id} entry={entry} />}
+    />
+  ) : (
+    <CirclesDirectory member={member} />
+  );
+}
+
 function CommunityShortcuts() {
   return (
     <nav className="community-shortcuts" aria-label="Community features">
+      <Link className="button secondary" to="/circles">
+        Circles
+      </Link>
       <Link className="button secondary" to="/survival">
         Survival Levels
       </Link>
@@ -1816,6 +1893,10 @@ function Editor({ kind }: { kind: Kind }) {
   const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
   const diary = kind === "diary";
+  const location = useLocation();
+  const [destination, setDestination] = useState<string | null>(() =>
+    new URLSearchParams(location.search).get("circle"),
+  );
   const [anonymousAvailable, setAnonymousAvailable] = useState(false);
   useEffect(() => {
     if (!db || !diary || id) return;
@@ -1852,6 +1933,7 @@ function Editor({ kind }: { kind: Kind }) {
   }, [id]);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!diary && destination === null) return;
     const form = new FormData(event.currentTarget);
     const fields = {
       p_title: String(form.get("title")).trim(),
@@ -1863,11 +1945,16 @@ function Editor({ kind }: { kind: Kind }) {
     try {
       const saved = await (id
         ? rpc<string>("edit_diary", { ...fields, p_id: id })
-        : rpc<string>("publish_entry", {
-            ...fields,
-            p_kind: kind,
-            p_anonymous: anonymousAvailable && form.has("anonymous"),
-          }));
+        : !diary && destination
+          ? rpc<string>("publish_circle_post", {
+              ...fields,
+              p_slug: destination,
+            })
+          : rpc<string>("publish_entry", {
+              ...fields,
+              p_kind: kind,
+              p_anonymous: anonymousAvailable && form.has("anonymous"),
+            }));
       navigate((diary ? "/diary/" : "/post/") + saved);
     } catch (e) {
       setError(message(e));
@@ -1907,66 +1994,76 @@ function Editor({ kind }: { kind: Kind }) {
       />
       {(!id || entry) && (
         <form className="form" onSubmit={(e) => void submit(e)}>
-          <label>
-            Title
-            <input
-              name="title"
-              required
-              maxLength={140}
-              defaultValue={entry?.title}
+          {!diary && (
+            <CircleDestination
+              selected={destination}
+              onChange={setDestination}
             />
-          </label>
-          <label>
-            {diary ? "Story tag" : "Category"}
-            <select
-              name="category"
-              required
-              defaultValue={entry?.category || ""}
-            >
-              <option value="">Choose one</option>
-              {(diary ? tags : categories).map((value) => (
-                <option key={value}>{value}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            {diary ? "Your story" : "Discussion"}
-            <textarea
-              name="body"
-              required
-              rows={diary ? 13 : 8}
-              maxLength={diary ? 20000 : 6000}
-              defaultValue={entry?.body}
-            />
-          </label>
-          {diary && !id && (
-            <div>
-              <label className="check">
-                <input
-                  type="checkbox"
-                  name="anonymous"
-                  disabled={!anonymousAvailable || young}
-                />{" "}
-                Publish anonymously
-              </label>
-              <p className="muted">
-                Readers see Anonymous Survivor. Authorised moderators can
-                identify the author for safety.{" "}
-                {!anonymousAvailable &&
-                  "Anonymous publishing is disabled pending verification."}
-              </p>
-            </div>
           )}
-          <button
-            className="button primary"
-            disabled={busy || young || preview}
-          >
-            {id
-              ? "Save changes"
-              : diary
-                ? "Publish story"
-                : "Publish discussion"}
-          </button>
+          {(diary || destination !== null) && (
+            <>
+              <label>
+                Title
+                <input
+                  name="title"
+                  required
+                  maxLength={140}
+                  defaultValue={entry?.title}
+                />
+              </label>
+              <label>
+                {diary ? "Story tag" : "Category"}
+                <select
+                  name="category"
+                  required
+                  defaultValue={entry?.category || ""}
+                >
+                  <option value="">Choose one</option>
+                  {(diary ? tags : categories).map((value) => (
+                    <option key={value}>{value}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                {diary ? "Your story" : "Discussion"}
+                <textarea
+                  name="body"
+                  required
+                  rows={diary ? 13 : 8}
+                  maxLength={diary ? 20000 : 6000}
+                  defaultValue={entry?.body}
+                />
+              </label>
+              {diary && !id && (
+                <div>
+                  <label className="check">
+                    <input
+                      type="checkbox"
+                      name="anonymous"
+                      disabled={!anonymousAvailable || young}
+                    />{" "}
+                    Publish anonymously
+                  </label>
+                  <p className="muted">
+                    Readers see Anonymous Survivor. Authorised moderators can
+                    identify the author for safety.{" "}
+                    {!anonymousAvailable &&
+                      "Anonymous publishing is disabled pending verification."}
+                  </p>
+                </div>
+              )}
+              <button
+                className="button primary"
+                disabled={busy || young || preview}
+              >
+                {id
+                  ? "Save changes"
+                  : diary
+                    ? "Publish story"
+                    : "Publish discussion"}
+              </button>
+            </>
+          )}
         </form>
       )}
     </Narrow>
@@ -2193,6 +2290,7 @@ function Detail({ kind }: { kind: Kind }) {
       <span className={`tag ${categoryClass(entry.category)}`}>
         {entry.category}
       </span>
+      <EntryCircle entry={entry} />
       <h1>{entry.title}</h1>
       {kind === "diary" && !entry.anonymous && !sample && (
         <SurvivalVote
@@ -2292,6 +2390,7 @@ type Review = {
   hidden: boolean;
   target_hidden: boolean;
   parent_hidden: boolean;
+  system_seed?: boolean;
   banned: boolean;
   created_at: string;
 };
@@ -2301,6 +2400,7 @@ function Admin() {
     <Require>
       <Moderation />
       <ExpansionModeration />
+      <CircleModeration />
     </Require>
   );
 }
@@ -2409,7 +2509,9 @@ function Moderation() {
                 <div className="item-actions">
                   {[
                     item.target_hidden ? "restore" : "hide",
-                    item.banned ? "unban" : "ban",
+                    ...(item.system_seed
+                      ? []
+                      : [item.banned ? "unban" : "ban"]),
                     "resolve",
                     ...(item.anonymous ? ["identify"] : []),
                   ].map((action) => (
