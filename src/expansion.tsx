@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
 import {
   Award as AwardIcon,
   Compass,
@@ -8,6 +8,7 @@ import {
   Sprout,
 } from "lucide-react";
 import { db, message, rpc } from "./api";
+import { profileReturn } from "./profile-navigation";
 
 const levels = [
   "",
@@ -100,11 +101,11 @@ function Feedback({ error, info }: { error?: string; info?: string }) {
   ) : null;
 }
 
-function Panel({ title, children }: { title: string; children: ReactNode }) {
+function Panel({ title, children, fromProfile }: { title: string; children: ReactNode; fromProfile?: string }) {
   return (
     <section className="narrow feature-page">
-      <Link className="back" to="/community">
-        ← The Community
+      <Link className="back" to={fromProfile || "/community"}>
+        {fromProfile ? "← Back to profile" : "← The Community"}
       </Link>
       <h1>{title}</h1>
       {children}
@@ -356,6 +357,7 @@ export function SurvivalVote({
 }
 
 export function Certificate() {
+  const back = profileReturn(useLocation().state);
   const { code } = useParams();
   const valid = Boolean(code && /^[0-9a-f-]{36}$/i.test(code));
   const result = useRemote<{
@@ -365,7 +367,7 @@ export function Certificate() {
     id: string;
   } | null>("verify_survival", { p_code: code }, valid);
   return (
-    <Panel title="Certificate of Survival">
+    <Panel title="Certificate of Survival" fromProfile={back}>
       <Feedback error={result.error} />
       {result.data ? (
         <article
@@ -408,13 +410,13 @@ export function Certificate() {
   );
 }
 
-export function PublicBadge({ username }: { username: string }) {
+export function PublicBadge({ username, fromProfile }: { username: string; fromProfile: string }) {
   const result = useRemote<{ level: number; code: string } | null>(
     "public_survival_badge",
     { p_username: username },
   );
   return result.data ? (
-    <Link className="button secondary" to={"/certificate/" + result.data.code}>
+    <Link className="button secondary" to={"/certificate/" + result.data.code} state={{ fromProfile }}>
       <LevelMark level={result.data.level} /> Level {result.data.level} ·{" "}
       {levels[result.data.level]}
     </Link>
