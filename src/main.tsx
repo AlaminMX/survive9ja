@@ -1951,7 +1951,6 @@ function Compose({ kind }: { kind: Kind }) {
 }
 function Editor({ kind }: { kind: Kind }) {
   const { id } = useParams();
-  const { session } = useAccount();
   const [entry, setEntry] = useState<Entry | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState("");
@@ -1975,10 +1974,6 @@ function Editor({ kind }: { kind: Kind }) {
       active = false;
     };
   }, [diary, id]);
-  const young =
-    diary &&
-    !id &&
-    Date.now() - Date.parse(session?.user.created_at || "") < 86400000;
   useEffect(() => {
     if (!id) return;
     let active = true;
@@ -2057,13 +2052,11 @@ function Editor({ kind }: { kind: Kind }) {
         info={
           preview
             ? "Preview only · Connect Supabase to publish."
-            : young
-              ? "You can publish your first diary 24 hours after creating your account."
-              : id && !loaded
-                ? "Loading your story…"
-                : id && !entry
-                  ? "This story is unavailable for editing."
-                  : undefined
+            : id && !loaded
+              ? "Loading your story…"
+              : id && !entry
+                ? "This story is unavailable for editing."
+                : undefined
         }
       />
       {(!id || entry) && (
@@ -2112,7 +2105,7 @@ function Editor({ kind }: { kind: Kind }) {
                     <input
                       type="checkbox"
                       name="anonymous"
-                      disabled={!anonymousAvailable || young}
+                      disabled={!anonymousAvailable}
                     />{" "}
                     Publish anonymously
                   </label>
@@ -2126,7 +2119,7 @@ function Editor({ kind }: { kind: Kind }) {
               )}
               <button
                 className="button primary"
-                disabled={busy || young || preview}
+                disabled={busy || preview}
               >
                 {id
                   ? "Save changes"
