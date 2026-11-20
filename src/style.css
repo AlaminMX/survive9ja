@@ -1504,3 +1504,34 @@ html {
 .circle-report {
   margin-top: 18px;
 }
+
+.share-row,
+.share-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
+.share-trigger {
+  min-height: 44px;
+}
+.share-dialog h2 {
+  margin: 0 0 16px;
+}
+.share-dialog label {
+  display: grid;
+  gap: 6px;
+}
+.share-dialog input {
+  width: 100%;
+  min-width: 0;
+}
+.share-actions {
+  margin-top: 14px;
+}
+.share-status {
+  margin: 8px 0 0;
+}
+.share-status:empty {
+  margin: 0;
+}

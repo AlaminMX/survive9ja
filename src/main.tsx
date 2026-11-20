@@ -57,6 +57,7 @@ import { validateProfile, type ProfileFields } from "./profile-validation";
 import { examples } from "./examples";
 import { AvatarEditor, uploadAvatar, type AvatarChange } from "./avatar";
 import { SurvivalGuide } from "./survival";
+import { ShareConversation } from "./share";
 import { GistIntro, rememberGistDiary } from "./gist";
 import {
   CircleDestination,
@@ -467,10 +468,13 @@ function EntryCard({ entry, gist = false }: { entry: Entry; gist?: boolean }) {
           <h2>
             <Link to={path}>{entry.title}</Link>
           </h2>
-          <Link className="gist-replies" to={path + "#replies"}>
-            <MessageCircle size={17} aria-hidden="true" />
-            {entry.replies} {entry.replies === 1 ? "reply" : "replies"}
-          </Link>
+          <div className="share-row">
+            <Link className="gist-replies" to={path + "#replies"}>
+              <MessageCircle size={17} aria-hidden="true" />
+              {entry.replies} {entry.replies === 1 ? "reply" : "replies"}
+            </Link>
+            <ShareConversation path={path} title={entry.title} />
+          </div>
         </div>
         <Link
           className="gist-entry-open"
@@ -520,6 +524,7 @@ function EntryCard({ entry, gist = false }: { entry: Entry; gist?: boolean }) {
               ? `${entry.relate} relate`
               : entry.reactions}
           </Link>
+          <ShareConversation path={entryPath(entry)} title={entry.title} />
         </div>
       </div>
     </article>
@@ -2316,6 +2321,7 @@ function Detail({ kind }: { kind: Kind }) {
           ? `${entry.relate} people relate`
           : `${entry.reactions} reactions`}
       </p>
+      <ShareConversation path={entryPath(entry)} title={entry.title} />
       {actions(entry)}
       <Status error={error} />
       <section id="replies" className="reply-area">
