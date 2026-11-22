@@ -418,6 +418,7 @@ export function CircleDestination({
           onChange={(event) => onChange(event.target.value)}
         >
           <option value="">Everyone</option>
+          <option value={newCircleDestination}>+ Create a Circle</option>
           {selected && selected !== newCircleDestination && !rows?.some((circle) => circle.slug === selected) && (
             <option value={selected}>{selected.replaceAll("-", " ")}</option>
           )}
@@ -426,12 +427,17 @@ export function CircleDestination({
               {circle.name}
             </option>
           ))}
-          <option value={newCircleDestination}>Other · create a Circle</option>
         </select>
       </label>
       {error && <p className="muted" role="status">Circles couldn’t load. You can still post to Everyone.</p>}
       {selected && selected !== newCircleDestination && <p className="muted">Your gist also appears in The Square.</p>}
-      {selected === newCircleDestination && <CircleFields />}
+      {selected === newCircleDestination && (
+        <fieldset className="circle-destination">
+          <legend>Create a Circle</legend>
+          <p className="muted">Your gist will be the first post in this public Circle.</p>
+          <CircleFields />
+        </fieldset>
+      )}
     </div>
   );
 }
