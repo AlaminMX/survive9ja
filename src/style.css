@@ -1029,7 +1029,7 @@ dialog::backdrop {
     left: 0;
     right: 0;
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     padding: 4px max(9px, env(safe-area-inset-right))
       calc(4px + env(safe-area-inset-bottom))
       max(9px, env(safe-area-inset-left));
@@ -1956,4 +1956,32 @@ html {
     min-height: 180px;
     resize: none;
   }
+}
+
+.people-list {
+  padding: 0;
+  list-style: none;
+}
+.people-row {
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+.person-identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.person-identity small {
+  display: block;
+  color: var(--muted);
+}
+.profile-connections {
+  margin-top: 12px;
 }
