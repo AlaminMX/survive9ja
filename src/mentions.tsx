@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ComponentProps } from "react";
+import { useEffect, useId, useRef, useState, type ComponentProps, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { db, rpc } from "./api";
 
@@ -27,9 +27,10 @@ export function MentionText({ text }: { text: string }) {
 
 export function MentionField({
   label,
+  accessory,
   id,
   ...props
-}: Omit<ComponentProps<"textarea">, "ref"> & { label: string }) {
+}: Omit<ComponentProps<"textarea">, "ref"> & { label: string; accessory?: ReactNode }) {
   const generatedId = useId();
   const fieldId = id ?? generatedId;
   const field = useRef<HTMLTextAreaElement>(null);
@@ -78,33 +79,36 @@ export function MentionField({
       if (!event.currentTarget.contains(event.relatedTarget)) setToken(null);
     }}>
       <label htmlFor={fieldId}>{label}</label>
-      <textarea
-        {...props}
-        id={fieldId}
-        ref={field}
-        aria-describedby={fieldId + "-hint"}
-        aria-controls={members.length ? suggestionsId : undefined}
-        onChange={(event) => { if (!(event.nativeEvent instanceof InputEvent && event.nativeEvent.isComposing)) updateToken(); }}
-        onCompositionEnd={updateToken}
-        onClick={updateToken}
-        onKeyUp={(event) => {
-          if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) updateToken();
-        }}
-        onKeyDown={(event) => {
-          if (!members.length || event.nativeEvent.isComposing) return;
-          if (event.key === "Escape") {
-            event.preventDefault();
-            setToken(null);
-          } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-            event.preventDefault();
-            const step = event.key === "ArrowDown" ? 1 : -1;
-            setSelected((value) => ((value ?? (step > 0 ? -1 : 0)) + step + members.length) % members.length);
-          } else if (event.key === "Enter" && selected !== null && members[selected]) {
-            event.preventDefault();
-            insert(members[selected]);
-          }
-        }}
-      />
+      <div className={accessory ? "mention-surface has-accessory" : "mention-surface"}>
+        <textarea
+          {...props}
+          id={fieldId}
+          ref={field}
+          aria-describedby={fieldId + "-hint"}
+          aria-controls={members.length ? suggestionsId : undefined}
+          onChange={(event) => { if (!(event.nativeEvent instanceof InputEvent && event.nativeEvent.isComposing)) updateToken(); }}
+          onCompositionEnd={updateToken}
+          onClick={updateToken}
+          onKeyUp={(event) => {
+            if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) updateToken();
+          }}
+          onKeyDown={(event) => {
+            if (!members.length || event.nativeEvent.isComposing) return;
+            if (event.key === "Escape") {
+              event.preventDefault();
+              setToken(null);
+            } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+              event.preventDefault();
+              const step = event.key === "ArrowDown" ? 1 : -1;
+              setSelected((value) => ((value ?? (step > 0 ? -1 : 0)) + step + members.length) % members.length);
+            } else if (event.key === "Enter" && selected !== null && members[selected]) {
+              event.preventDefault();
+              insert(members[selected]);
+            }
+          }}
+        />
+        {accessory}
+      </div>
       <small className="muted" id={fieldId + "-hint"}>Type @ and two letters of a username to mention someone.</small>
       {members.length > 0 && (
         <>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Mic, Upload } from "lucide-react";
 import { db, message } from "./api";
 
@@ -74,6 +74,8 @@ export function VoiceComposer({ clip, onChange, disabled, onBusy }: {
   disabled: boolean;
   onBusy: (busy: boolean) => void;
 }) {
+  const panelId = useId();
+  const [open, setOpen] = useState(false);
   const microphone = useRef<MediaStream | null>(null);
   const recorder = useRef<MediaRecorder | null>(null);
   const timer = useRef<number>(undefined);
@@ -179,9 +181,23 @@ export function VoiceComposer({ clip, onChange, disabled, onBusy }: {
   }
 
   return (
-    <fieldset className="voice-composer">
-      <legend>Voice note <span className="muted">· optional</span></legend>
-      <p className="muted">Up to 1 minute and 2 MB. Use your written gist to summarise the audio.</p>
+    <>
+      <button
+        type="button"
+        className="voice-trigger"
+        aria-label={clip ? "Manage attached voice note" : "Add voice note"}
+        aria-expanded={open}
+        aria-controls={panelId}
+        title={clip ? "Voice note attached" : "Add voice note"}
+        data-attached={Boolean(clip)}
+        disabled={disabled || state !== "idle"}
+        onClick={() => setOpen(!open)}
+      >
+        <Mic size={19} aria-hidden="true" />
+      </button>
+      <fieldset className="voice-composer" id={panelId} hidden={!open}>
+      <legend>Voice note</legend>
+      <p className="muted">Up to 1 minute and 2 MB. Add a written summary if you like.</p>
       {error && <p className="notice error" role="alert">{error}</p>}
       {state === "idle" && clip && <LocalAudio clip={clip} label="Preview your voice note" />}
       <div className="item-actions">
@@ -213,7 +229,8 @@ export function VoiceComposer({ clip, onChange, disabled, onBusy }: {
           </>
         )}
       </div>
-    </fieldset>
+      </fieldset>
+    </>
   );
 }
 
