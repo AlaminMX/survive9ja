@@ -322,16 +322,21 @@
   color: var(--ink);
   font-weight: 800;
 }
-.gist-entry h2 {
-  margin: 0;
-  font:
-    800 clamp(22px, 4vw, 36px)/1.06 "Bricolage Grotesque",
-    sans-serif;
-  letter-spacing: -0.05em;
+.gist-entry-text {
+  margin: 6px 0 2px;
+  white-space: pre-line;
   overflow-wrap: anywhere;
+  font-size: clamp(15px, 2vw, 18px);
+  line-height: 1.45;
 }
-.gist-entry h2 a:hover {
+.gist-read-more {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   color: var(--leaf-ink);
+  font-weight: 700;
+}
+.gist-read-more:hover {
   text-decoration: underline;
 }
 .gist-replies {

@@ -1,9 +1,8 @@
 export type VoiceUpload = { path: string; uploaded: boolean; reservedAt: number };
 
 export type GistDraft = {
-  title: string;
+  title?: string;
   body: string;
-  category: string;
   destination: string;
   routeCircle: string;
   circleName: string;

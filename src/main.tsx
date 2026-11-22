@@ -39,6 +39,7 @@ import {
   Sun,
   UserRound,
   UsersRound,
+  X,
 } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
 import {
@@ -514,10 +515,23 @@ function MemberLike({ item, disabled }: { item: Entry; disabled: boolean }) {
   );
 }
 
+function gistExcerpt(body: string, words = 44, characters = 290) {
+  const text = body.trim().replace(/\s+/g, " ");
+  const wordsEnd = [...text.matchAll(/\S+/g)][words]?.index ?? text.length;
+  const chars = Array.from(text.slice(0, wordsEnd));
+  const excerpt = chars.slice(0, characters).join("").trimEnd();
+  return { excerpt, truncated: excerpt.length < text.length };
+}
+
+function gistTitle(body: string) {
+  return gistExcerpt(body.replace(/\s+/g, " "), 18, 125).excerpt || "Voice note";
+}
+
 function EntryCard({ entry, gist = false }: { entry: Entry; gist?: boolean }) {
   if (gist) {
     const author = entry.author;
     const path = entryPath(entry);
+    const { excerpt, truncated } = gistExcerpt(entry.body);
     return (
       <article className="gist-entry">
         <Avatar
@@ -538,9 +552,12 @@ function EntryCard({ entry, gist = false }: { entry: Entry; gist?: boolean }) {
             <span>·</span>
             <time dateTime={entry.created_at}>{age(entry.created_at)}</time>
           </div>
-          <h2>
-            <Link to={path}>{entry.title}</Link>
-          </h2>
+          {excerpt ? (
+            <p className="gist-entry-text"><MentionText text={excerpt} />{truncated && "…"}</p>
+          ) : (
+            <Link className="gist-read-more" to={path}>Listen to voice note</Link>
+          )}
+          {truncated && <Link className="gist-read-more" to={path}>Read more</Link>}
           <div className="share-row">
             <Link className="gist-replies" to={path + "#replies"}>
               <MessageCircle size={17} aria-hidden="true" />
@@ -2056,7 +2073,7 @@ function Editor({ kind, draftKey }: { kind: Kind; draftKey?: string }) {
     if (!draftKey || !draftReady) return;
     const field = (name: string) => String(form.get(name) ?? "");
     const snapshot: GistDraft = {
-      title: field("title"), body: field("body"), category: field("category"),
+      body: field("body"),
       destination: field("circle"), routeCircle, circleName: field("name"), circleDescription: field("description"),
       clip: audio, upload: voiceUpload.current,
     };
@@ -2114,10 +2131,11 @@ function Editor({ kind, draftKey }: { kind: Kind; draftKey?: string }) {
     event.preventDefault();
     if (busy || voiceBusy) return;
     const form = new FormData(event.currentTarget);
+    const body = String(form.get("body") ?? "").trim();
     const fields = {
-      p_title: String(form.get("title")).trim(),
-      p_body: String(form.get("body")).trim(),
-      p_category: String(form.get("category")),
+      p_title: diary ? String(form.get("title")).trim() : gistTitle(body),
+      p_body: body,
+      p_category: diary ? String(form.get("category")) : "Everyday Life",
     };
     if (!fields.p_body && (diary || !clip)) {
       setError(diary ? "Write your story before publishing." : "Write a gist or attach a voice note.");
@@ -2192,7 +2210,7 @@ function Editor({ kind, draftKey }: { kind: Kind; draftKey?: string }) {
       <select
         name="category"
         required
-        defaultValue={entry?.category ?? draft?.category ?? ""}
+        defaultValue={entry?.category ?? ""}
       >
         <option value="">Choose one</option>
         {(diary ? tags : categories).map((value) => (
@@ -2201,18 +2219,8 @@ function Editor({ kind, draftKey }: { kind: Kind; draftKey?: string }) {
       </select>
     </label>
   );
-  return (
-    <Narrow
-      title={
-        id
-          ? "Edit your story"
-          : diary
-            ? "Share your story"
-            : "Start a gist"
-      }
-      back={profileReturn(location.state) || (diary ? "/diaries" : "/")}
-      backLabel={profileReturn(location.state) ? "Back to profile" : undefined}
-    >
+  const content = (
+    <>
       {diary && <p>Write from your own experience. Details in your story can identify you.</p>}
       <Status
         error={error}
@@ -2230,7 +2238,7 @@ function Editor({ kind, draftKey }: { kind: Kind; draftKey?: string }) {
       {draftReady && (!id || entry) && (
         <form
           ref={formElement}
-          className="form"
+          className={diary ? "form" : "form gist-editor-form"}
           onInput={(event) => saveDraft(new FormData(event.currentTarget))}
           onSubmit={(e) => void submit(e)}
         >
@@ -2245,15 +2253,12 @@ function Editor({ kind, draftKey }: { kind: Kind; draftKey?: string }) {
               }}
             />
           )}
-          <label>
-            Title
-            <input
-              name="title"
-              required
-              maxLength={140}
-              defaultValue={entry?.title ?? draft?.title}
-            />
-          </label>
+          {diary && (
+            <label>
+              Title
+              <input name="title" required maxLength={140} defaultValue={entry?.title} />
+            </label>
+          )}
           {diary && categoryField}
           <MentionField
             id={diary ? undefined : "gist-body"}
@@ -2266,9 +2271,8 @@ function Editor({ kind, draftKey }: { kind: Kind; draftKey?: string }) {
             )}
             rows={diary ? 13 : 5}
             maxLength={diary ? 20000 : 6000}
-            defaultValue={entry?.body ?? draft?.body}
+            defaultValue={entry?.body ?? (draft?.body || draft?.title)}
           />
-          {!diary && categoryField}
           {diary && !id && (
             <div>
               <label className="check">
@@ -2306,8 +2310,26 @@ function Editor({ kind, draftKey }: { kind: Kind; draftKey?: string }) {
           </button>
         </form>
       )}
-      {!diary && <Link className="text-button" to="/diaries/new">Write a Diary instead</Link>}
+    </>
+  );
+  return diary ? (
+    <Narrow
+      title={id ? "Edit your story" : "Share your story"}
+      back={profileReturn(location.state) || "/diaries"}
+      backLabel={profileReturn(location.state) ? "Back to profile" : undefined}
+    >
+      {content}
     </Narrow>
+  ) : (
+    <section className="narrow gist-editor" aria-labelledby="gist-editor-title">
+      <div className="gist-editor-header">
+        <Link className="gist-editor-close" to={/^[a-z0-9-]{3,80}$/.test(routeCircle) ? "/circles/" + routeCircle : "/"} aria-label="Close gist composer">
+          <X size={24} aria-hidden="true" />
+        </Link>
+        <h1 id="gist-editor-title" className="sr-only">Start a gist</h1>
+      </div>
+      {content}
+    </section>
   );
 }
 type Thread = { entry: Entry; replies: Entry[] };
@@ -2534,7 +2556,7 @@ function Detail({ kind }: { kind: Kind }) {
         {entry.category}
       </span>
       <EntryCircle entry={entry} />
-      <h1>{entry.title}</h1>
+      <h1 className={!diary && entry.body && entry.title === gistTitle(entry.body) ? "sr-only" : undefined}>{entry.title}</h1>
       {kind === "diary" && !entry.anonymous && !sample && (
         <SurvivalVote
           key={entry.id}
