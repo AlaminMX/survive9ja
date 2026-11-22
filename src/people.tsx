@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
+import { Search, X } from "lucide-react";
 import { db, message, rpc } from "./api";
 
 type FollowState = { following: boolean; follows_you: boolean };
@@ -66,7 +67,11 @@ export function People({ viewer, direction }: { viewer: Viewer; direction?: "fol
   const { username } = useParams();
   const [params, setParams] = useSearchParams();
   const { state } = useLocation();
-  const query = params.get("q") ?? "";
+  const input = params.get("q") ?? "";
+  const query = input.trim();
+  function updateSearch(value: string) {
+    setParams(value ? { q: value } : {}, { replace: true, preventScrollReset: true });
+  }
   const profile = direction && username ? "/u/" + username : "/";
   const back = state?.fromProfile === "/profile" && username === viewer.username ? "/profile" : profile;
   const title = direction ? direction === "followers" ? "Followers" : "Following" : "Search people";
@@ -76,13 +81,29 @@ export function People({ viewer, direction }: { viewer: Viewer; direction?: "fol
       <Link className="back" to={back}>← {direction ? "Back to profile" : "The Square"}</Link>
       <h1>{title}</h1>
       {!direction && (
-        <form className="form circle-search" key={query} onSubmit={(event) => {
-          event.preventDefault();
-          const term = String(new FormData(event.currentTarget).get("q") ?? "").trim();
-          setParams(term ? { q: term } : {});
-        }}>
-          <label>Display name or username<input name="q" type="search" maxLength={60} defaultValue={query} placeholder="e.g. @survive9ja" /></label>
-          <button className="button primary">Search</button>
+        <form className="form live-people-search" role="search" onSubmit={(event) => event.preventDefault()}>
+          <label htmlFor="people-query">Display name or username</label>
+          <div className="people-query-field">
+            <Search size={19} aria-hidden="true" />
+            <input
+              id="people-query"
+              type="search"
+              value={input}
+              onChange={(event) => updateSearch(event.currentTarget.value)}
+              maxLength={60}
+              placeholder="e.g. @survive9ja"
+              autoComplete="off"
+              spellCheck={false}
+              aria-describedby="people-query-hint"
+            />
+            {input && (
+              <button className="icon people-clear" type="button" aria-label="Clear search" onClick={(event) => {
+                event.currentTarget.parentElement?.querySelector("input")?.focus();
+                updateSearch("");
+              }}><X size={18} aria-hidden="true" /></button>
+            )}
+          </div>
+          <small className="muted" id="people-query-hint">Results update as you type.</small>
         </form>
       )}
       {!direction && query.replace(/^@+/, "").length < 2 ? (
@@ -101,18 +122,22 @@ function PeopleList({ query, username, direction, viewer }: { query: string; use
   const [error, setError] = useState("");
   useEffect(() => {
     let active = true;
-    if (db) void rpc<Person[]>("browse_people", { p_query: query, p_username: username ?? null, p_direction: direction ?? null }).then(
-      (data) => { if (active) { setRows(data.slice(0, 20)); setMore(data.length > 20); } },
-      (reason) => { if (active) setError(message(reason)); },
-    ).finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
+    const timer = window.setTimeout(() => {
+      if (!db) return;
+      void rpc<Person[]>("browse_people", { p_query: query, p_username: username ?? null, p_direction: direction ?? null }).then(
+        (data) => { if (active) { setRows(data.slice(0, 20)); setMore(data.length > 20); } },
+        (reason) => { if (active) setError(message(reason)); },
+      ).finally(() => { if (active) setLoading(false); });
+    }, direction ? 0 : 240);
+    return () => { active = false; window.clearTimeout(timer); };
   }, [query, username, direction]);
   if (!db) return <p className="notice">People search and following require the community database.</p>;
   return (
     <>
       {error && <p className="notice error" role="alert">{error}</p>}
-      {loading && <p role="status">Loading people…</p>}
+      {loading && <p role="status">{direction ? "Loading people…" : "Finding people…"}</p>}
       {!loading && !error && rows.length === 0 && <p className="muted">{direction ? "No members in this list yet." : "No matching members."}</p>}
+      {!loading && !error && !direction && rows.length > 0 && <p className="sr-only" role="status">{rows.length} matching {rows.length === 1 ? "person" : "people"}</p>}
       <ul className="people-list">
         {rows.map((person) => (
           <li key={person.username} className="people-row">

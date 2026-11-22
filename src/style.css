@@ -1985,3 +1985,33 @@ html {
 .profile-connections {
   margin-top: 12px;
 }
+
+.people-query-field {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding-inline: 12px 4px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  color: var(--leaf-ink);
+  background: var(--surface);
+}
+.people-query-field:focus-within {
+  outline: 2px solid var(--leaf-ink);
+  outline-offset: 2px;
+}
+.live-people-search .people-query-field input {
+  min-width: 0;
+  min-height: 48px;
+  border: 0;
+  background: transparent;
+  padding-inline: 0;
+  outline: none;
+}
+.people-query-field input::-webkit-search-cancel-button {
+  display: none;
+}
+.people-clear {
+  grid-column: 3;
+}
