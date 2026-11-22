@@ -2015,3 +2015,121 @@ html {
 .people-clear {
   grid-column: 3;
 }
+
+.messages-link {
+  position: relative;
+}
+.messages-link > span {
+  position: absolute;
+  inset: 0 0 auto auto;
+  padding: 1px 4px;
+  border-radius: 9px;
+  color: var(--on-leaf);
+  background: var(--leaf);
+  font-size: 10px;
+}
+.messages-layout {
+  width: min(100% - 32px, 980px);
+  margin: 24px auto;
+  display: grid;
+  grid-template-columns: minmax(0, 300px) minmax(0, 1fr);
+  gap: 24px;
+  overflow-wrap: anywhere;
+}
+.messages-inbox,
+.dm-thread,
+.messages-content {
+  min-width: 0;
+}
+.messages-content {
+  border-inline-start: 1px solid var(--line);
+  padding-inline-start: 20px;
+}
+.dm-list,
+.dm-messages {
+  padding: 0;
+  list-style: none;
+}
+.dm-inbox-link {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  padding: 12px 6px;
+  border-bottom: 1px solid var(--line);
+}
+.dm-inbox-link[aria-current="page"],
+.dm-inbox-link:hover {
+  background: var(--leaf-soft);
+}
+.dm-inbox-copy,
+.dm-inbox-copy > * {
+  display: block;
+  min-width: 0;
+}
+.dm-inbox-copy small {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dm-inbox-copy time,
+.dm-messages time,
+.dm-report {
+  color: var(--muted);
+  font-size: .8rem;
+}
+.dm-unread {
+  color: var(--leaf-ink);
+  font-size: .8rem;
+}
+.dm-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: min(55dvh, 580px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.dm-messages li {
+  align-self: flex-start;
+  max-width: 86%;
+}
+.dm-messages li[data-mine="true"] {
+  align-self: flex-end;
+}
+.dm-bubble {
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  padding: 10px 13px;
+  border-radius: 16px;
+  margin: 0 0 3px;
+  white-space: pre-wrap;
+}
+.dm-messages li[data-mine="true"] .dm-bubble {
+  background: var(--leaf-soft);
+}
+.dm-report summary {
+  min-height: 44px;
+  align-content: center;
+  cursor: pointer;
+}
+.dm-compose .button {
+  justify-self: end;
+}
+@media (max-width: 900px) {
+  .messages-layout {
+    display: block;
+  }
+  .messages-layout[data-thread="true"] .messages-inbox,
+  .messages-layout[data-thread="false"] .messages-content {
+    display: none;
+  }
+  .messages-content {
+    border: 0;
+    padding: 0;
+  }
+  .dm-messages {
+    max-height: 47dvh;
+  }
+}

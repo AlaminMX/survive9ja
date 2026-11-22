@@ -87,6 +87,7 @@ import {
 import { profilePath, profileReturn } from "./profile-navigation";
 import { AdminDashboard } from "./admin";
 import { People, ProfileConnections } from "./people";
+import { MessageModeration, Messages, MessagesLink } from "./messages";
 import "./style.css";
 import "./gist.css";
 
@@ -239,6 +240,7 @@ function Shell() {
             </NavLink>
           </nav>
           <div className="head-actions">
+            {viewer.canFollow && <MessagesLink key={session?.user.id} member={session?.user.id} />}
             <button
               className="icon theme"
               aria-label={`Theme: ${theme}. Switch theme`}
@@ -265,6 +267,9 @@ function Shell() {
       </header>
       <main id="main" tabIndex={-1}>
         <Routes>
+          <Route path="/messages" element={<Require>{session && <Messages key={session.user.id} member={session.user.id} />}</Require>} />
+          <Route path="/messages/:id" element={<Require>{session && <Messages key={session.user.id} member={session.user.id} />}</Require>} />
+          <Route path="/messages/new/:username" element={<Require>{session && <Messages key={session.user.id} member={session.user.id} />}</Require>} />
           <Route path="/search" element={<People viewer={viewer} />} />
           <Route path="/u/:username/followers" element={<People viewer={viewer} direction="followers" />} />
           <Route path="/u/:username/following" element={<People viewer={viewer} direction="following" />} />
@@ -1926,6 +1931,7 @@ function ProfileOverview({ own = false }: { own?: boolean }) {
         {!sample && <ProfileConnections key={profile.username} username={profile.username} source={source}
           viewer={{ username: account.profile?.username, canFollow: Boolean(account.session?.user.email_confirmed_at && account.profile?.completed_at) }} />}
         <div className="item-actions profile-actions">
+          {!owner && !sample && <Link className="button secondary" to={"/messages/new/" + profile.username}>Message</Link>}
           {owner && <Link className="button primary" to={settings} state={{ fromProfile: source }}>Edit profile</Link>}
           {own && <Link className="button secondary" to={"/u/" + profile.username} state={{ fromProfile: source }}>View public profile</Link>}
           <PublicBadge key={profile.username} username={profile.username} fromProfile={source} />
@@ -2677,7 +2683,7 @@ function Admin() {
         <AdminDashboard
           key={session.user.id}
           token={session.access_token}
-          moderation={<><Moderation /><ExpansionModeration /><CircleModeration /></>}
+          moderation={<><Moderation /><MessageModeration /><ExpansionModeration /><CircleModeration /></>}
         />
       )}
     </Require>

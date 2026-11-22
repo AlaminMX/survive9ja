@@ -126,3 +126,9 @@ Apply the `admin_accounts.sql` migration in order. The Vercel deletion endpoint 
 After applying the `gist_voice_notes.sql` migration, verified members can record an optional voice note in **Drop a gist**, including Circle posts. The editor accepts clips up to one minute and 2 MB and lets members publish with just a title, category and audio after applying the voice-only migration. Tap the microphone in the writing field to start recording and tap the stop control to preview it. The private bucket enforces the file size and list of allowed MIME types. The editor checks playback and duration in the browser. Support for specific formats depends on the browser.
 
 Audio is downloaded only on request. Storage checks the parent gist's visibility each time and allows moderators to listen in report review. The policy requires Supabase Storage's operation-aware helper `storage.allow_only_operation(text)`. Unattached uploads expire for publication after a day. If a draft is abandoned after upload, remove its expired unattached object via the Storage API before deleting its reservation. Account deletion cleans up both voice notes and profile photos.
+
+## Private messages
+
+Apply the private text chat migration after people search and following. Mutual followers can start a chat. A one-way follower can send one request, and the recipient must accept it before either can send more. Declined requests stay closed. Either participant can block sending in the thread and report a received message. Moderators see the reported message and reason, and resolution is logged. Private messages are accessible only through participant-checked database functions.
+
+For faster delivery, enable Supabase Realtime for the per-account `dm_changes` signal table. The migration adds it to the standard publication when available. The signal contains no message content. The app also checks for updates every 20 seconds while visible.
