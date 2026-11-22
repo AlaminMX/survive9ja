@@ -578,7 +578,7 @@ function EntryCard({ entry, gist = false }: { entry: Entry; gist?: boolean }) {
       <h2>
         <Link to={entryPath(entry)}>{entry.title}</Link>
       </h2>
-      <p className="excerpt"><MentionText text={entry.body} /></p>
+      {entry.body && <p className="excerpt"><MentionText text={entry.body} /></p>}
       {entry.voice_note && <span className="voice-label">Voice note</span>}
       <div className="entry-bottom">
         <Byline entry={entry} />
@@ -2072,6 +2072,10 @@ function Editor({ kind }: { kind: Kind }) {
       p_body: String(form.get("body")).trim(),
       p_category: String(form.get("category")),
     };
+    if (!fields.p_body && (diary || !clip)) {
+      setError(diary ? "Write your story before publishing." : "Write a gist or attach a voice note.");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -2192,12 +2196,14 @@ function Editor({ kind }: { kind: Kind }) {
             label={diary ? "Your story" : "Your gist"}
             placeholder={diary ? undefined : "Wetin dey happen?"}
             name="body"
-            required
+            required={diary || !clip}
+            accessory={diary ? undefined : (
+              <VoiceComposer clip={clip} onChange={changeClip} onBusy={setVoiceBusy} disabled={busy || preview} />
+            )}
             rows={diary ? 13 : 5}
             maxLength={diary ? 20000 : 6000}
             defaultValue={entry?.body}
           />
-          {!diary && <VoiceComposer clip={clip} onChange={changeClip} onBusy={setVoiceBusy} disabled={busy || preview} />}
           {!diary && categoryField}
           {diary && !id && (
             <div>
@@ -2473,7 +2479,7 @@ function Detail({ kind }: { kind: Kind }) {
       )}
       <Byline entry={entry} />
       {sample && <Status info="Fictional preview content" />}
-      <div className="prose-body"><MentionText text={entry.body} /></div>
+      {entry.body && <div className="prose-body"><MentionText text={entry.body} /></div>}
       {entry.voice_note && <VoicePlayer key={entry.voice_note} path={entry.voice_note} />}
       {entry.owned && diary && (
         <Link className="button secondary" to={"/diaries/edit/" + entry.id} state={state}>
