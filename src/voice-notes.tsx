@@ -1,57 +1,12 @@
-import { useEffect, useId, useRef, useState } from "react";
-import { Mic, Upload } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Mic, Square } from "lucide-react";
 import { db, message } from "./api";
 
 export const voiceBucket = "gist-voice-notes";
 const maxSeconds = 60;
 const maxBytes = 2 * 1024 * 1024;
-const types = ["audio/webm", "audio/mp4", "audio/ogg", "audio/mpeg", "audio/wav", "audio/x-wav", "audio/aac", "audio/x-m4a"];
-const extensionTypes: Record<string, string> = {
-  webm: "audio/webm", mp4: "audio/mp4", m4a: "audio/mp4", ogg: "audio/ogg", opus: "audio/ogg",
-  mp3: "audio/mpeg", wav: "audio/wav", aac: "audio/aac",
-};
 const recordingTypes = ["audio/webm;codecs=opus", "audio/mp4", "audio/ogg;codecs=opus"];
-
-function checkSize(clip: Blob) {
-  if (!clip.size) throw Error("The audio clip is empty.");
-  if (clip.size > maxBytes) throw Error("Choose an audio clip under 2 MB.");
-}
-
-async function checkUpload(file: File) {
-  checkSize(file);
-  const type = extensionTypes[file.name.split(".").at(-1)?.toLowerCase() || ""] || file.type;
-  if (!types.includes(type)) throw Error("Choose an MP3, M4A, WAV, WebM, Ogg or AAC audio file.");
-  const clip = file.slice(0, file.size, type);
-  const audio = new Audio();
-  const url = URL.createObjectURL(clip);
-  try {
-    await new Promise<void>((resolve, reject) => {
-      function finish(error?: Error) {
-        window.clearTimeout(timeout);
-        audio.onloadedmetadata = null;
-        audio.onerror = null;
-        if (error) reject(error);
-        else resolve();
-      }
-      const timeout = window.setTimeout(() => finish(Error("This browser couldn’t read the audio. Try an MP3 or M4A file.")), 8000);
-      audio.onloadedmetadata = () => {
-        if (!Number.isFinite(audio.duration) || audio.duration <= 0)
-          finish(Error("This clip needs a readable duration. Try an MP3 or M4A file."));
-        else if (audio.duration > maxSeconds)
-          finish(Error("Choose a clip that lasts one minute or less."));
-        else finish();
-      };
-      audio.onerror = () => finish(Error("This browser couldn’t play the file. Try an MP3 or M4A file."));
-      audio.preload = "metadata";
-      audio.src = url;
-    });
-    return clip;
-  } finally {
-    audio.removeAttribute("src");
-    audio.load();
-    URL.revokeObjectURL(url);
-  }
-}
+const flatWave = "M0 16 H100";
 
 function LocalAudio({ clip, label, playOnLoad = false, onError }: {
   clip: Blob;
@@ -74,13 +29,13 @@ export function VoiceComposer({ clip, onChange, disabled, onBusy }: {
   disabled: boolean;
   onBusy: (busy: boolean) => void;
 }) {
-  const panelId = useId();
-  const [open, setOpen] = useState(false);
   const microphone = useRef<MediaStream | null>(null);
   const recorder = useRef<MediaRecorder | null>(null);
+  const audioContext = useRef<AudioContext | null>(null);
+  const waveform = useRef<SVGPathElement>(null);
   const timer = useRef<number>(undefined);
   const mounted = useRef(false);
-  const [state, setState] = useState<"idle" | "starting" | "recording" | "checking">("idle");
+  const [state, setState] = useState<"idle" | "starting" | "recording">("idle");
   const [error, setError] = useState("");
   const [seconds, setSeconds] = useState(0);
   const canRecord = typeof navigator.mediaDevices?.getUserMedia === "function" && typeof MediaRecorder !== "undefined";
@@ -90,6 +45,8 @@ export function VoiceComposer({ clip, onChange, disabled, onBusy }: {
     microphone.current?.getTracks().forEach((track) => track.stop());
     microphone.current = null;
     recorder.current = null;
+    if (audioContext.current) void audioContext.current.close().catch(() => {});
+    audioContext.current = null;
   }
 
   useEffect(() => {
@@ -111,6 +68,14 @@ export function VoiceComposer({ clip, onChange, disabled, onBusy }: {
     setState("starting");
     onBusy(true);
     try {
+      if (typeof AudioContext !== "undefined" && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        try {
+          audioContext.current = new AudioContext();
+          void audioContext.current.resume().catch(() => {});
+        } catch {
+          // The recorder can run without a waveform.
+        }
+      }
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       if (!mounted.current) {
         stream.getTracks().forEach((track) => track.stop());
@@ -120,12 +85,25 @@ export function VoiceComposer({ clip, onChange, disabled, onBusy }: {
       const mimeType = recordingTypes.find((type) => MediaRecorder.isTypeSupported(type));
       const capture = new MediaRecorder(stream, { ...(mimeType ? { mimeType } : {}), audioBitsPerSecond: 48000 });
       recorder.current = capture;
+
+      let analyser: AnalyserNode | undefined;
+      try {
+        const context = audioContext.current;
+        if (context) {
+          analyser = context.createAnalyser();
+          analyser.fftSize = 256;
+          context.createMediaStreamSource(stream).connect(analyser);
+        }
+      } catch {
+        analyser = undefined;
+      }
+      const samples = new Uint8Array(256);
       const chunks: Blob[] = [];
       capture.ondataavailable = ({ data }) => { if (data.size) chunks.push(data); };
       capture.onerror = () => {
         capture.onstop = null;
         release();
-        setError("The recording stopped unexpectedly. Try recording again or upload a clip.");
+        setError("The recording stopped unexpectedly. Try recording again.");
         setState("idle");
         onBusy(false);
       };
@@ -138,9 +116,11 @@ export function VoiceComposer({ clip, onChange, disabled, onBusy }: {
           if (performance.now() - started > (maxSeconds + 1) * 1000)
             throw Error("The recording ran over one minute. Try a shorter clip.");
           const type = (capture.mimeType || chunks[0]?.type || "").split(";")[0];
-          if (!types.includes(type)) throw Error("This browser’s recording format is unsupported. Upload an audio file instead.");
+          if (!["audio/webm", "audio/mp4", "audio/ogg"].includes(type))
+            throw Error("This browser’s recording format is unsupported.");
           const recorded = new Blob(chunks, { type });
-          checkSize(recorded);
+          if (!recorded.size) throw Error("The recording is empty. Try again.");
+          if (recorded.size > maxBytes) throw Error("The recording exceeds 2 MB. Try a shorter one.");
           onChange(recorded);
         } catch (reason) {
           setError(message(reason));
@@ -150,86 +130,73 @@ export function VoiceComposer({ clip, onChange, disabled, onBusy }: {
       setSeconds(0);
       setState("recording");
       timer.current = window.setInterval(() => {
-        const elapsed = Math.min(maxSeconds, Math.floor((performance.now() - started) / 1000));
-        setSeconds(elapsed);
-        if (elapsed >= maxSeconds && capture.state === "recording") capture.stop();
-      }, 250);
+        const elapsed = Math.floor((performance.now() - started) / 1000);
+        setSeconds(Math.min(maxSeconds, elapsed));
+        if (elapsed >= maxSeconds && capture.state === "recording") {
+          capture.stop();
+          return;
+        }
+        if (analyser && waveform.current) {
+          analyser.getByteTimeDomainData(samples);
+          let path = "M0 16";
+          for (let point = 1; point < 25; point += 1) {
+            const level = (samples[point * 10] - 128) / 128;
+            const spike = Math.min(13, Math.abs(level) * 68);
+            path += ` L${point * 4} ${(16 + (point % 2 ? -spike : spike)).toFixed(1)}`;
+          }
+          waveform.current.setAttribute("d", path + " L100 16");
+        }
+      }, 80);
     } catch {
       release();
       if (!mounted.current) return;
-      setError("Couldn’t start the microphone. Check browser permissions or upload a clip.");
+      setError("Couldn’t start the microphone. Check your browser’s microphone permissions and try again.");
       setState("idle");
       onBusy(false);
     }
   }
 
-  async function upload(file: File) {
-    setState("checking");
-    onBusy(true);
-    setError("");
-    try {
-      const validated = await checkUpload(file);
-      if (mounted.current) onChange(validated);
-    } catch (reason) {
-      if (mounted.current) setError(message(reason));
-    } finally {
-      if (mounted.current) {
-        setState("idle");
-        onBusy(false);
-      }
-    }
-  }
+  const recording = state === "recording";
+  const label = recording ? "Stop recording" : state === "starting"
+    ? "Opening microphone" : clip ? "Record a new voice note" : "Record a voice note";
 
   return (
     <>
+      {recording && (
+        <div className="voice-live">
+          <span className="sr-only" role="status">Recording voice note</span>
+          <svg viewBox="0 0 100 32" aria-hidden="true">
+            <path ref={waveform} d={flatWave} fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+          </svg>
+          <span aria-hidden="true">{Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, "0")}</span>
+        </div>
+      )}
       <button
         type="button"
         className="voice-trigger"
-        aria-label={clip ? "Manage attached voice note" : "Add voice note"}
-        aria-expanded={open}
-        aria-controls={panelId}
-        title={clip ? "Voice note attached" : "Add voice note"}
-        data-attached={Boolean(clip)}
-        disabled={disabled || state !== "idle"}
-        onClick={() => setOpen(!open)}
+        aria-label={label}
+        title={label}
+        data-recording={recording}
+        disabled={disabled || state === "starting" || !canRecord}
+        onClick={() => {
+          if (recorder.current?.state === "recording") recorder.current.stop();
+          else void record();
+        }}
       >
-        <Mic size={19} aria-hidden="true" />
+        {recording ? <Square size={16} fill="currentColor" aria-hidden="true" /> : <Mic size={19} aria-hidden="true" />}
       </button>
-      <fieldset className="voice-composer" id={panelId} hidden={!open}>
-      <legend>Voice note</legend>
-      <p className="muted">Up to 1 minute and 2 MB. Add a written summary if you like.</p>
+      {state === "starting" && <small className="muted" role="status">Opening microphone…</small>}
+      {!canRecord && <small className="muted">Voice recording is unavailable in this browser.</small>}
       {error && <p className="notice error" role="alert">{error}</p>}
-      {state === "idle" && clip && <LocalAudio clip={clip} label="Preview your voice note" />}
-      <div className="item-actions">
-        {state === "recording" ? (
-          <button type="button" className="button secondary" onClick={() => {
-            if (recorder.current?.state === "recording") recorder.current.stop();
-          }}>Stop recording · {seconds}s</button>
-        ) : (
-          <>
-            {canRecord && (
-              <button type="button" className="button secondary" disabled={disabled || state !== "idle"} onClick={() => void record()}>
-                <Mic size={16} aria-hidden="true" /> {state === "starting" ? "Opening microphone…" : "Record"}
-              </button>
-            )}
-            <label className="voice-upload button secondary">
-              <Upload size={16} aria-hidden="true" /> {state === "checking" ? "Checking audio…" : "Upload audio"}
-              <input type="file" accept="audio/*,.m4a,.webm,.mp3,.opus" disabled={disabled || state !== "idle"} onChange={(event) => {
-                const file = event.currentTarget.files?.[0];
-                event.currentTarget.value = "";
-                if (file) void upload(file);
-              }} />
-            </label>
-            {clip && (
-              <button type="button" className="text-button" disabled={disabled || state !== "idle"} onClick={() => {
-                setError("");
-                onChange(null);
-              }}>Remove audio</button>
-            )}
-          </>
-        )}
-      </div>
-      </fieldset>
+      {state === "idle" && clip && (
+        <div className="voice-preview">
+          <LocalAudio clip={clip} label="Preview your voice note" />
+          <button type="button" className="text-button" disabled={disabled} onClick={() => {
+            setError("");
+            onChange(null);
+          }}>Remove audio</button>
+        </div>
+      )}
     </>
   );
 }
