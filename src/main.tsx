@@ -60,6 +60,7 @@ import { SurvivalGuide } from "./survival";
 import { ShareConversation } from "./share";
 import { MentionField, MentionText } from "./mentions";
 import { VoiceComposer, VoicePlayer, voiceBucket } from "./voice-notes";
+import { readGistDraft, writeGistDraft, type GistDraft, type VoiceUpload } from "./gist-draft";
 import { GistIntro, rememberGistDiary } from "./gist";
 import {
   CircleDestination,
@@ -2004,15 +2005,17 @@ function Legal({ page }: { page: string }) {
   );
 }
 function Compose({ kind }: { kind: Kind }) {
+  const { session } = useAccount();
+  const draftKey = kind === "square" ? (preview ? "preview" : session?.user.id) : undefined;
   return preview ? (
-    <Editor kind={kind} />
+    <Editor key={draftKey} kind={kind} draftKey={draftKey} />
   ) : (
     <Require>
-      <Editor kind={kind} />
+      <Editor key={draftKey} kind={kind} draftKey={draftKey} />
     </Require>
   );
 }
-function Editor({ kind }: { kind: Kind }) {
+function Editor({ kind, draftKey }: { kind: Kind; draftKey?: string }) {
   const { id } = useParams();
   const [entry, setEntry] = useState<Entry | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -2021,17 +2024,61 @@ function Editor({ kind }: { kind: Kind }) {
   const navigate = useNavigate();
   const diary = kind === "diary";
   const location = useLocation();
-  const [destination, setDestination] = useState(() =>
-    new URLSearchParams(location.search).get("circle") ?? "",
-  );
+  const [routeCircle] = useState(() => new URLSearchParams(location.search).get("circle") ?? "");
+  const [destination, setDestination] = useState(routeCircle);
+  const formElement = useRef<HTMLFormElement>(null);
+  const [draft, setDraft] = useState<GistDraft>();
+  const [draftReady, setDraftReady] = useState(!draftKey);
+  const [draftStatus, setDraftStatus] = useState<"saved" | "unavailable">();
   const [clip, setClip] = useState<Blob | null>(null);
   const [voiceBusy, setVoiceBusy] = useState(false);
-  const voiceUpload = useRef<{ path: string; uploaded: boolean } | null>(null);
+  const voiceUpload = useRef<VoiceUpload | null>(null);
+  const draftRevision = useRef(0);
+  useEffect(() => {
+    if (!draftKey) return;
+    let active = true;
+    void readGistDraft(draftKey).then((saved) => {
+      if (!active || !saved) return;
+      setDraft(saved);
+      setDestination(routeCircle && routeCircle !== saved.routeCircle ? routeCircle : saved.destination);
+      setClip(saved.clip);
+      voiceUpload.current = saved.upload && Date.now() - saved.upload.reservedAt < 86_400_000 ? saved.upload : null;
+      setDraftStatus("saved");
+    }).catch(() => {
+      if (active) setDraftStatus("unavailable");
+    }).finally(() => {
+      if (active) setDraftReady(true);
+    });
+    return () => { active = false; };
+  }, [draftKey, routeCircle]);
+
+  function saveDraft(form: FormData, audio = clip) {
+    if (!draftKey || !draftReady) return;
+    const field = (name: string) => String(form.get(name) ?? "");
+    const snapshot: GistDraft = {
+      title: field("title"), body: field("body"), category: field("category"),
+      destination: field("circle"), routeCircle, circleName: field("name"), circleDescription: field("description"),
+      clip: audio, upload: voiceUpload.current,
+    };
+    const revision = ++draftRevision.current;
+    void writeGistDraft(draftKey, snapshot).then(
+      () => { if (revision === draftRevision.current) setDraftStatus("saved"); },
+      () => { if (revision === draftRevision.current) setDraftStatus("unavailable"); },
+    );
+  }
+
+  async function clearDraft() {
+    if (!draftKey) return;
+    draftRevision.current += 1;
+    await writeGistDraft(draftKey, null).catch(() => {});
+  }
+
   function changeClip(next: Blob | null) {
     const previous = voiceUpload.current;
     voiceUpload.current = null;
     if (previous && db) void db.storage.from(voiceBucket).remove([previous.path]);
     setClip(next);
+    if (formElement.current) saveDraft(new FormData(formElement.current), next);
   }
   const [anonymousAvailable, setAnonymousAvailable] = useState(false);
   useEffect(() => {
@@ -2083,8 +2130,10 @@ function Editor({ kind }: { kind: Kind }) {
         const upload = voiceUpload.current ?? {
           path: await rpc<string>("reserve_gist_voice_note"),
           uploaded: false,
+          reservedAt: Date.now(),
         };
         voiceUpload.current = upload;
+        saveDraft(form);
         if (!upload.uploaded) {
           const { error } = await db.storage.from(voiceBucket).upload(upload.path, clip, { contentType: clip.type, cacheControl: "0" });
           if (error) {
@@ -2093,6 +2142,7 @@ function Editor({ kind }: { kind: Kind }) {
             if (!data?.size) throw Error("The voice note couldn’t upload. Try again.");
           }
           upload.uploaded = true;
+          saveDraft(form);
         }
         const newCircle = destination === newCircleDestination;
         const result = await rpc<{ id: string; circle_slug: string | null }>("publish_gist_with_voice", {
@@ -2102,6 +2152,7 @@ function Editor({ kind }: { kind: Kind }) {
           p_circle_name: newCircle ? String(form.get("name") || "").trim() : null,
           p_circle_description: newCircle ? String(form.get("description") || "").trim() : null,
         });
+        await clearDraft();
         navigate(newCircle ? "/circles/" + result.circle_slug : "/post/" + result.id);
         return;
       }
@@ -2111,6 +2162,7 @@ function Editor({ kind }: { kind: Kind }) {
           p_name: String(form.get("name") || "").trim(),
           p_description: String(form.get("description") || "").trim(),
         });
+        await clearDraft();
         navigate("/circles/" + slug);
         return;
       }
@@ -2126,6 +2178,7 @@ function Editor({ kind }: { kind: Kind }) {
               p_kind: kind,
               p_anonymous: anonymousAvailable && form.has("anonymous"),
             }));
+      await clearDraft();
       navigate((id && profileReturn(location.state)) || (diary ? "/diary/" : "/post/") + saved);
     } catch (e) {
       setError(message(e));
@@ -2139,7 +2192,7 @@ function Editor({ kind }: { kind: Kind }) {
       <select
         name="category"
         required
-        defaultValue={entry?.category || ""}
+        defaultValue={entry?.category ?? draft?.category ?? ""}
       >
         <option value="">Choose one</option>
         {(diary ? tags : categories).map((value) => (
@@ -2173,12 +2226,23 @@ function Editor({ kind }: { kind: Kind }) {
                 : undefined
         }
       />
-      {(!id || entry) && (
-        <form className="form" onSubmit={(e) => void submit(e)}>
+      {!draftReady && <p role="status">Restoring draft…</p>}
+      {draftReady && (!id || entry) && (
+        <form
+          ref={formElement}
+          className="form"
+          onInput={(event) => saveDraft(new FormData(event.currentTarget))}
+          onSubmit={(e) => void submit(e)}
+        >
           {!diary && (
             <CircleDestination
               selected={destination}
-              onChange={setDestination}
+              draftName={draft?.circleName}
+              draftDescription={draft?.circleDescription}
+              onChange={(next) => {
+                setDestination(next);
+                if (formElement.current) saveDraft(new FormData(formElement.current));
+              }}
             />
           )}
           <label>
@@ -2187,7 +2251,7 @@ function Editor({ kind }: { kind: Kind }) {
               name="title"
               required
               maxLength={140}
-              defaultValue={entry?.title}
+              defaultValue={entry?.title ?? draft?.title}
             />
           </label>
           {diary && categoryField}
@@ -2202,7 +2266,7 @@ function Editor({ kind }: { kind: Kind }) {
             )}
             rows={diary ? 13 : 5}
             maxLength={diary ? 20000 : 6000}
-            defaultValue={entry?.body}
+            defaultValue={entry?.body ?? draft?.body}
           />
           {!diary && categoryField}
           {diary && !id && (
@@ -2222,6 +2286,11 @@ function Editor({ kind }: { kind: Kind }) {
                   "Anonymous publishing is disabled pending verification."}
               </p>
             </div>
+          )}
+          {draftStatus && (
+            <small className="muted" role="status">
+              {draftStatus === "saved" ? "Draft saved on this device." : "This browser couldn’t save your draft."}
+            </small>
           )}
           <button
             className="button primary"
