@@ -354,14 +354,6 @@
 .gist-entry-open:hover {
   background: var(--leaf-soft);
 }
-.bottom-nav .nav-create svg {
-  background: var(--leaf);
-  color: var(--on-leaf);
-  border-radius: 7px;
-  padding: 4px;
-  width: 26px;
-  height: 26px;
-}
 @media (max-width: 520px) {
   .gist-layout {
     width: calc(
