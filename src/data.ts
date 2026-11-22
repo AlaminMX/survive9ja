@@ -53,6 +53,7 @@ export type Entry = {
   cursor_score?: string;
   circle?: { slug: string; name: string } | null;
   system_seed?: boolean;
+  voice_note?: string | null;
 };
 export const diaryReactions = ["I relate", "Been there", "Respect"];
 export const states = [

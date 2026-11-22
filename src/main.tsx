@@ -59,6 +59,7 @@ import { AvatarEditor, uploadAvatar, type AvatarChange } from "./avatar";
 import { SurvivalGuide } from "./survival";
 import { ShareConversation } from "./share";
 import { MentionField, MentionText } from "./mentions";
+import { VoiceComposer, VoicePlayer, voiceBucket } from "./voice-notes";
 import { GistIntro, rememberGistDiary } from "./gist";
 import {
   CircleDestination,
@@ -537,6 +538,7 @@ function EntryCard({ entry, gist = false }: { entry: Entry; gist?: boolean }) {
               <MessageCircle size={17} aria-hidden="true" />
               {entry.replies} {entry.replies === 1 ? "reply" : "replies"}
             </Link>
+            {entry.voice_note && <span className="voice-label">Voice note</span>}
             <LikeButton item={entry} path={path} />
             <ShareConversation path={path} title={entry.title} />
           </div>
@@ -570,6 +572,7 @@ function EntryCard({ entry, gist = false }: { entry: Entry; gist?: boolean }) {
         <Link to={entryPath(entry)}>{entry.title}</Link>
       </h2>
       <p className="excerpt"><MentionText text={entry.body} /></p>
+      {entry.voice_note && <span className="voice-label">Voice note</span>}
       <div className="entry-bottom">
         <Byline entry={entry} />
         <div className="activity">
@@ -2014,6 +2017,15 @@ function Editor({ kind }: { kind: Kind }) {
   const [destination, setDestination] = useState(() =>
     new URLSearchParams(location.search).get("circle") ?? "",
   );
+  const [clip, setClip] = useState<Blob | null>(null);
+  const [voiceBusy, setVoiceBusy] = useState(false);
+  const voiceUpload = useRef<{ path: string; uploaded: boolean } | null>(null);
+  function changeClip(next: Blob | null) {
+    const previous = voiceUpload.current;
+    voiceUpload.current = null;
+    if (previous && db) void db.storage.from(voiceBucket).remove([previous.path]);
+    setClip(next);
+  }
   const [anonymousAvailable, setAnonymousAvailable] = useState(false);
   useEffect(() => {
     if (!db || !diary || id) return;
@@ -2046,7 +2058,7 @@ function Editor({ kind }: { kind: Kind }) {
   }, [id]);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busy) return;
+    if (busy || voiceBusy) return;
     const form = new FormData(event.currentTarget);
     const fields = {
       p_title: String(form.get("title")).trim(),
@@ -2056,6 +2068,32 @@ function Editor({ kind }: { kind: Kind }) {
     setBusy(true);
     setError("");
     try {
+      if (!diary && clip && db) {
+        const upload = voiceUpload.current ?? {
+          path: await rpc<string>("reserve_gist_voice_note"),
+          uploaded: false,
+        };
+        voiceUpload.current = upload;
+        if (!upload.uploaded) {
+          const { error } = await db.storage.from(voiceBucket).upload(upload.path, clip, { contentType: clip.type, cacheControl: "0" });
+          if (error) {
+            // A previous upload might have succeeded before its response was lost.
+            const { data } = await db.storage.from(voiceBucket).download(upload.path, {}, { cache: "no-store" });
+            if (!data?.size) throw Error("The voice note couldn’t upload. Try again.");
+          }
+          upload.uploaded = true;
+        }
+        const newCircle = destination === newCircleDestination;
+        const result = await rpc<{ id: string; circle_slug: string | null }>("publish_gist_with_voice", {
+          ...fields,
+          p_path: upload.path,
+          p_circle: newCircle ? "" : destination,
+          p_circle_name: newCircle ? String(form.get("name") || "").trim() : null,
+          p_circle_description: newCircle ? String(form.get("description") || "").trim() : null,
+        });
+        navigate(newCircle ? "/circles/" + result.circle_slug : "/post/" + result.id);
+        return;
+      }
       if (!diary && destination === newCircleDestination) {
         const slug = await rpc<string>("create_circle", {
           ...fields,
@@ -2151,6 +2189,7 @@ function Editor({ kind }: { kind: Kind }) {
             maxLength={diary ? 20000 : 6000}
             defaultValue={entry?.body}
           />
+          {!diary && <VoiceComposer clip={clip} onChange={changeClip} onBusy={setVoiceBusy} disabled={busy || preview} />}
           {!diary && categoryField}
           {diary && !id && (
             <div>
@@ -2172,9 +2211,9 @@ function Editor({ kind }: { kind: Kind }) {
           )}
           <button
             className="button primary"
-            disabled={busy || preview}
+            disabled={busy || voiceBusy || preview}
           >
-            {id
+            {busy ? "Publishing…" : id
               ? "Save changes"
               : diary
                 ? "Publish story"
@@ -2427,6 +2466,7 @@ function Detail({ kind }: { kind: Kind }) {
       <Byline entry={entry} />
       {sample && <Status info="Fictional preview content" />}
       <div className="prose-body"><MentionText text={entry.body} /></div>
+      {entry.voice_note && <VoicePlayer key={entry.voice_note} path={entry.voice_note} />}
       {entry.owned && diary && (
         <Link className="button secondary" to={"/diaries/edit/" + entry.id} state={state}>
           Edit story
@@ -2500,6 +2540,7 @@ type Review = {
   target_id: string;
   root_id: string | null;
   root_body: string | null;
+  voice_note?: string | null;
   anonymous: boolean;
   reason: string;
   note: string;
@@ -2606,6 +2647,7 @@ function Moderation() {
                   <p>{item.root_body}</p>
                 </details>
               )}
+              {item.voice_note && <VoicePlayer key={item.voice_note} path={item.voice_note} />}
               {identity?.report === item.id && (
                 <Status
                   info={`Author: ${identity.display_name} (@${identity.username})`}

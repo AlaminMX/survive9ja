@@ -120,3 +120,9 @@ Apply `20261120075039_member_mention_search.sql` for username suggestions. In a 
 Open `/admin` with a confirmed, onboarded administrator account. The account directory includes incomplete signups and shows last sign-in. **Open sessions** counts members with a stored Auth session that has no expiry timestamp or expires in the future. It is an operational session view and can include offline members. The dashboard records moderator changes and deletions in the audit log. Moderators retain access to the existing moderation tools.
 
 Apply the `admin_accounts.sql` migration in order. The Vercel deletion endpoint uses `SUPABASE_SERVICE_ROLE_KEY` or `SUPABASE_SECRET_KEY` server-side to remove managed profile photos before the protected database operation deletes the account, its sessions and associated content. If asset cleanup is interrupted, retry the same account. Administrator accounts are protected, and accounts with Paystack records require separate reconciliation to preserve payment history.
+
+## Gist voice notes
+
+After applying the `gist_voice_notes.sql` migration, verified members can record or upload an optional voice note in **Drop a gist**, including Circle posts. The editor accepts clips up to one minute and 2 MB and keeps the written gist available to every reader. The private bucket enforces the file size and list of allowed MIME types. The editor checks playback and duration in the browser. Support for specific formats depends on the browser.
+
+Audio is downloaded only on request. Storage checks the parent gist's visibility each time and allows moderators to listen in report review. The policy requires Supabase Storage's operation-aware helper `storage.allow_only_operation(text)`. Unattached uploads expire for publication after a day. If a draft is abandoned after upload, remove its expired unattached object via the Storage API before deleting its reservation. Account deletion cleans up both voice notes and profile photos.

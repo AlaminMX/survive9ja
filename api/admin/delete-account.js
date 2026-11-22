@@ -37,21 +37,29 @@ export default async function handler(request, response) {
     const { error: rejected } = await client.rpc("admin_check_account_deletion", args);
     if (rejected) return response.status(rejected.code === "42501" ? 403 : 409).json({ error: rejected.message });
 
-    const bucket = createClient(url, serviceKey, { auth }).storage.from("survive9ja-avatars");
-    for (let batch = 0; batch < 10; batch += 1) {
-      const { data: objects, error: listError } = await bucket.list(target, { limit: 100 });
-      if (listError) throw listError;
-      if (!objects.length) {
-        const { error: deleteError } = await client.rpc("admin_delete_account", args);
-        if (deleteError)
-          return response.status(deleteError.code === "42501" ? 403 : 409).json({ error: deleteError.message });
-        return response.status(200).json({ deleted: true });
+    const storage = createClient(url, serviceKey, { auth }).storage;
+    for (const name of ["survive9ja-avatars", "gist-voice-notes"]) {
+      const bucket = storage.from(name);
+      let complete = false;
+      for (let batch = 0; batch < 10; batch += 1) {
+        const { data: objects, error: listError } = await bucket.list(target, { limit: 100 });
+        if (listError) throw listError;
+        if (!objects.length) {
+          complete = true;
+          break;
+        }
+        if (objects.some((object) => !object.id)) throw Error("Unexpected media folder.");
+        const { error: removeError } = await bucket.remove(objects.map((object) => target + "/" + object.name));
+        if (removeError) throw removeError;
       }
-      if (objects.some((object) => !object.id)) throw Error("Unexpected avatar folder.");
-      const { error: removeError } = await bucket.remove(objects.map((object) => target + "/" + object.name));
-      if (removeError) throw removeError;
+      if (!complete)
+        return response.status(409).json({ error: "Some uploaded media remains. Retry to finish cleanup." });
     }
-    return response.status(409).json({ error: "Some profile photos remain. Retry to finish cleanup." });
+    const { error: deleteError } = await client.rpc("admin_delete_account", args);
+    if (deleteError)
+      return response.status(deleteError.code === "42501" ? 403 : 409).json({ error: deleteError.message });
+    return response.status(200).json({ deleted: true });
+
   } catch {
     return response.status(502).json({ error: "Account deletion could not finish. Retry to complete any remaining cleanup." });
   }
