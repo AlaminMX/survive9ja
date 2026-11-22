@@ -404,25 +404,20 @@ export function CircleDestination({
   selected,
   onChange,
 }: {
-  selected: string | null;
+  selected: string;
   onChange: (value: string) => void;
 }) {
   const { rows, error } = useCircles();
   return (
-    <fieldset className="circle-destination">
-      <legend>Where does your gist belong?</legend>
+    <div className="gist-circle-picker">
       <label>
-        Posting to
+        Choose circle
         <select
           name="circle"
-          required
-          value={selected === null ? "__choose" : selected}
+          value={selected}
           onChange={(event) => onChange(event.target.value)}
         >
-          <option value="__choose" disabled>
-            Choose where to post
-          </option>
-          <option value="">The Square · everyone</option>
+          <option value="">Everyone</option>
           {selected && selected !== newCircleDestination && !rows?.some((circle) => circle.slug === selected) && (
             <option value={selected}>{selected.replaceAll("-", " ")}</option>
           )}
@@ -434,18 +429,10 @@ export function CircleDestination({
           <option value={newCircleDestination}>Other · create a Circle</option>
         </select>
       </label>
+      {error && <p className="muted" role="status">Circles couldn’t load. You can still post to Everyone.</p>}
+      {selected && selected !== newCircleDestination && <p className="muted">Your gist also appears in The Square.</p>}
       {selected === newCircleDestination && <CircleFields />}
-      <p className="muted">Circle discussions also appear in The Square.</p>
-      {error && (
-        <p className="muted">
-          Circles couldn’t load. You can still post to The Square.
-        </p>
-      )}
-      <Link className="text-button" to="/diaries/new">
-        Sharing a personal story? Write a Diary{" "}
-        <span aria-hidden="true">↗</span>
-      </Link>
-    </fieldset>
+    </div>
   );
 }
 

@@ -1724,3 +1724,19 @@ html {
 .admin-danger {
   color: var(--terra);
 }
+
+.gist-circle-picker {
+  display: grid;
+  gap: 8px;
+}
+.gist-circle-picker > label:first-child {
+  width: fit-content;
+  min-width: min(100%, 190px);
+  max-width: 100%;
+}
+.gist-circle-picker select {
+  min-height: 44px;
+}
+.gist-circle-picker p {
+  margin: 0;
+}

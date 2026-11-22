@@ -2011,8 +2011,8 @@ function Editor({ kind }: { kind: Kind }) {
   const navigate = useNavigate();
   const diary = kind === "diary";
   const location = useLocation();
-  const [destination, setDestination] = useState<string | null>(() =>
-    new URLSearchParams(location.search).get("circle"),
+  const [destination, setDestination] = useState(() =>
+    new URLSearchParams(location.search).get("circle") ?? "",
   );
   const [anonymousAvailable, setAnonymousAvailable] = useState(false);
   useEffect(() => {
@@ -2046,7 +2046,7 @@ function Editor({ kind }: { kind: Kind }) {
   }, [id]);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busy || (!diary && destination === null)) return;
+    if (busy) return;
     const form = new FormData(event.currentTarget);
     const fields = {
       p_title: String(form.get("title")).trim(),
@@ -2084,6 +2084,21 @@ function Editor({ kind }: { kind: Kind }) {
       setBusy(false);
     }
   }
+  const categoryField = (
+    <label>
+      {diary ? "Story tag" : "Category"}
+      <select
+        name="category"
+        required
+        defaultValue={entry?.category || ""}
+      >
+        <option value="">Choose one</option>
+        {(diary ? tags : categories).map((value) => (
+          <option key={value}>{value}</option>
+        ))}
+      </select>
+    </label>
+  );
   return (
     <Narrow
       title={
@@ -2096,11 +2111,7 @@ function Editor({ kind }: { kind: Kind }) {
       back={profileReturn(location.state) || (diary ? "/diaries" : "/")}
       backLabel={profileReturn(location.state) ? "Back to profile" : undefined}
     >
-      <p>
-        {diary
-          ? "Write from your own experience. Details in your story can identify you."
-          : "Give people enough context to join the conversation."}
-      </p>
+      {diary && <p>Write from your own experience. Details in your story can identify you.</p>}
       <Status
         error={error}
         info={
@@ -2121,72 +2132,59 @@ function Editor({ kind }: { kind: Kind }) {
               onChange={setDestination}
             />
           )}
-          {(diary || destination !== null) && (
-            <>
-              <label>
-                Title
+          <label>
+            Title
+            <input
+              name="title"
+              required
+              maxLength={140}
+              defaultValue={entry?.title}
+            />
+          </label>
+          {diary && categoryField}
+          <MentionField
+            label={diary ? "Your story" : "Your gist"}
+            placeholder={diary ? undefined : "Wetin dey happen?"}
+            name="body"
+            required
+            rows={diary ? 13 : 5}
+            maxLength={diary ? 20000 : 6000}
+            defaultValue={entry?.body}
+          />
+          {!diary && categoryField}
+          {diary && !id && (
+            <div>
+              <label className="check">
                 <input
-                  name="title"
-                  required
-                  maxLength={140}
-                  defaultValue={entry?.title}
-                />
+                  type="checkbox"
+                  name="anonymous"
+                  disabled={!anonymousAvailable}
+                />{" "}
+                Publish anonymously
               </label>
-              <label>
-                {diary ? "Story tag" : "Category"}
-                <select
-                  name="category"
-                  required
-                  defaultValue={entry?.category || ""}
-                >
-                  <option value="">Choose one</option>
-                  {(diary ? tags : categories).map((value) => (
-                    <option key={value}>{value}</option>
-                  ))}
-                </select>
-              </label>
-              <MentionField
-                label={diary ? "Your story" : "Discussion"}
-                name="body"
-                required
-                rows={diary ? 13 : 8}
-                maxLength={diary ? 20000 : 6000}
-                defaultValue={entry?.body}
-              />
-              {diary && !id && (
-                <div>
-                  <label className="check">
-                    <input
-                      type="checkbox"
-                      name="anonymous"
-                      disabled={!anonymousAvailable}
-                    />{" "}
-                    Publish anonymously
-                  </label>
-                  <p className="muted">
-                    Readers see Anonymous Survivor. Authorised moderators can
-                    identify the author for safety.{" "}
-                    {!anonymousAvailable &&
-                      "Anonymous publishing is disabled pending verification."}
-                  </p>
-                </div>
-              )}
-              <button
-                className="button primary"
-                disabled={busy || preview}
-              >
-                {id
-                  ? "Save changes"
-                  : diary
-                    ? "Publish story"
-                    : destination === newCircleDestination
-                      ? "Create Circle and post"
-                      : "Publish gist"}
-              </button>
-            </>
+              <p className="muted">
+                Readers see Anonymous Survivor. Authorised moderators can
+                identify the author for safety.{" "}
+                {!anonymousAvailable &&
+                  "Anonymous publishing is disabled pending verification."}
+              </p>
+            </div>
           )}
+          <button
+            className="button primary"
+            disabled={busy || preview}
+          >
+            {id
+              ? "Save changes"
+              : diary
+                ? "Publish story"
+                : destination === newCircleDestination
+                  ? "Create Circle and post"
+                  : "Publish gist"}
+          </button>
         </form>
       )}
+      {!diary && <Link className="text-button" to="/diaries/new">Write a Diary instead</Link>}
     </Narrow>
   );
 }
