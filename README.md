@@ -101,7 +101,7 @@ Square discussions and replies have one Like button. All earlier Square reaction
 
 ## Circles
 
-Circles are public places for recurring topics. Browse at `/circles`, follow a Circle to save it under **Following**, or start a Circle with its first discussion. Discussion posts in Circles also appear in The Square with their Circle name. The **Drop a gist** composer asks where the discussion belongs before opening the writing fields. Choose **Other · create a Circle** to publish the gist as the first post in a new Circle. Personal stories still use The Diaries.
+Circles are public places for recurring topics. Browse at `/circles`, follow a Circle to save it under **Following**, or start a Circle with its first discussion. Discussion posts in Circles also appear in The Square with their Circle name. The **Drop a gist** composer opens ready to write and posts to **Everyone** by default. Use **Choose circle** to direct the gist to a public Circle. Choose **Other · create a Circle** to publish the gist as the first post in a new Circle. Personal stories still use The Diaries.
 
 Apply the `circles.sql` migration in filename order after the community expansion migration in the environment you are reviewing. It seeds Campus Life, First Job & NYSC and Money & Everyday Life with one Survive9ja starter discussion each. Starter discussions have system attribution and can receive replies or be hidden by moderators. They do not belong to a user account.
 
