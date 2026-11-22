@@ -70,6 +70,7 @@ export function MentionField({
     if (input.maxLength >= 0 && input.value.length - (token.end - token.start) + replacement.length > input.maxLength) return;
     input.focus();
     input.setRangeText(replacement, token.start, token.end, "end");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
     setToken(null);
     setSelected(null);
   }

@@ -403,8 +403,12 @@ export const newCircleDestination = "__new_circle";
 export function CircleDestination({
   selected,
   onChange,
+  draftName,
+  draftDescription,
 }: {
   selected: string;
+  draftName?: string;
+  draftDescription?: string;
   onChange: (value: string) => void;
 }) {
   const { rows, error } = useCircles();
@@ -435,20 +439,21 @@ export function CircleDestination({
         <fieldset className="circle-destination">
           <legend>Create a Circle</legend>
           <p className="muted">Your gist will be the first post in this public Circle.</p>
-          <CircleFields />
+          <CircleFields initialName={draftName} initialDescription={draftDescription} />
         </fieldset>
       )}
     </div>
   );
 }
 
-function CircleFields() {
+function CircleFields({ initialName, initialDescription }: { initialName?: string; initialDescription?: string }) {
   return (
     <>
         <label>
           Circle name
           <input
             name="name"
+            defaultValue={initialName}
             placeholder="e.g. UNILAG Campus Life"
             required
             minLength={3}
@@ -459,6 +464,7 @@ function CircleFields() {
           What’s this Circle about?
           <textarea
             name="description"
+            defaultValue={initialDescription}
             required
             minLength={12}
             maxLength={280}
