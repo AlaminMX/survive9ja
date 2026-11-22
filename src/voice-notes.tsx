@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Mic, Square } from "lucide-react";
+import { Mic, Pause, Play, Square, Trash2 } from "lucide-react";
 import { db, message } from "./api";
 
 export const voiceBucket = "gist-voice-notes";
@@ -8,19 +8,109 @@ const maxBytes = 2 * 1024 * 1024;
 const recordingTypes = ["audio/webm;codecs=opus", "audio/mp4", "audio/ogg;codecs=opus"];
 const flatWave = "M0 16 H100";
 
-function LocalAudio({ clip, label, playOnLoad = false, onError }: {
+function audioTime(seconds: number) {
+  const whole = Math.floor(seconds);
+  return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, "0")}`;
+}
+
+function LocalAudio({
+  clip, label, playOnLoad = false, recordedLength, onError, onRemove, removeDisabled,
+}: {
   clip: Blob;
   label: string;
   playOnLoad?: boolean;
+  recordedLength?: number;
   onError?: () => void;
+  onRemove?: () => void;
+  removeDisabled?: boolean;
 }) {
+  const audio = useRef<HTMLAudioElement>(null);
   const [url, setUrl] = useState<string>();
+  const [playing, setPlaying] = useState(false);
+  const [position, setPosition] = useState(0);
+  const [duration, setDuration] = useState(recordedLength ?? 0);
+  const [error, setError] = useState("");
+
   useEffect(() => {
     const source = URL.createObjectURL(clip);
     setUrl(source);
     return () => URL.revokeObjectURL(source);
   }, [clip]);
-  return url ? <audio className="voice-audio" aria-label={label} controls preload="metadata" src={url} autoPlay={playOnLoad} onError={onError} /> : null;
+
+  function syncDuration(element: HTMLAudioElement) {
+    if (Number.isFinite(element.duration) && element.duration > 0) {
+      setDuration(element.duration);
+      return;
+    }
+    if (element.seekable.length) {
+      const end = element.seekable.end(element.seekable.length - 1);
+      if (end > 0 && end <= maxSeconds + 1) setDuration(end);
+    }
+  }
+
+  return (
+    <div className="voice-card" role="group" aria-label={label}>
+      {url && (
+        <audio
+          ref={audio}
+          src={url}
+          preload="metadata"
+          autoPlay={playOnLoad}
+          onLoadedMetadata={(event) => syncDuration(event.currentTarget)}
+          onDurationChange={(event) => syncDuration(event.currentTarget)}
+          onProgress={(event) => syncDuration(event.currentTarget)}
+          onTimeUpdate={(event) => setPosition(event.currentTarget.currentTime)}
+          onPlay={() => setPlaying(true)}
+          onPause={() => setPlaying(false)}
+          onEnded={() => setPlaying(false)}
+          onError={() => {
+            setError("This voice note couldn’t play.");
+            onError?.();
+          }}
+          hidden
+        />
+      )}
+      <button className="voice-play" type="button" disabled={!url} aria-label={playing ? "Pause voice note" : "Play voice note"} onClick={async () => {
+        if (!audio.current) return;
+        setError("");
+        if (audio.current.paused) {
+          try {
+            await audio.current.play();
+          } catch {
+            setError("This voice note couldn’t play. Try again.");
+          }
+        } else audio.current.pause();
+      }}>
+        {playing ? <Pause size={19} aria-hidden="true" /> : <Play size={19} aria-hidden="true" />}
+      </button>
+      <div className="voice-progress">
+        <input
+          className="voice-seek"
+          type="range"
+          aria-label="Voice note playback position"
+          aria-valuetext={duration ? `${audioTime(position)} of ${audioTime(duration)}` : audioTime(position)}
+          min={0}
+          max={duration || 1}
+          step={0.01}
+          value={Math.min(position, duration)}
+          disabled={!duration}
+          onChange={(event) => {
+            if (!audio.current) return;
+            const next = Number(event.currentTarget.value);
+            audio.current.currentTime = next;
+            setPosition(next);
+          }}
+        />
+        <span className="voice-time">{audioTime(position)}{duration > 0 && ` / ${audioTime(duration)}`}</span>
+      </div>
+      {onRemove && (
+        <button className="voice-remove" type="button" aria-label="Remove voice note" title="Remove voice note" disabled={removeDisabled} onClick={onRemove}>
+          <Trash2 size={18} aria-hidden="true" />
+        </button>
+      )}
+      {error && <p className="voice-play-error" role="alert">{error}</p>}
+    </div>
+  );
 }
 
 export function VoiceComposer({ clip, onChange, disabled, onBusy }: {
@@ -29,6 +119,8 @@ export function VoiceComposer({ clip, onChange, disabled, onBusy }: {
   disabled: boolean;
   onBusy: (busy: boolean) => void;
 }) {
+  const micButton = useRef<HTMLButtonElement>(null);
+  const [recordedLength, setRecordedLength] = useState(0);
   const microphone = useRef<MediaStream | null>(null);
   const recorder = useRef<MediaRecorder | null>(null);
   const audioContext = useRef<AudioContext | null>(null);
@@ -121,6 +213,7 @@ export function VoiceComposer({ clip, onChange, disabled, onBusy }: {
           const recorded = new Blob(chunks, { type });
           if (!recorded.size) throw Error("The recording is empty. Try again.");
           if (recorded.size > maxBytes) throw Error("The recording exceeds 2 MB. Try a shorter one.");
+          setRecordedLength((performance.now() - started) / 1000);
           onChange(recorded);
         } catch (reason) {
           setError(message(reason));
@@ -174,6 +267,7 @@ export function VoiceComposer({ clip, onChange, disabled, onBusy }: {
       <button
         type="button"
         className="voice-trigger"
+        ref={micButton}
         aria-label={label}
         title={label}
         data-recording={recording}
@@ -189,13 +283,17 @@ export function VoiceComposer({ clip, onChange, disabled, onBusy }: {
       {!canRecord && <small className="muted">Voice recording is unavailable in this browser.</small>}
       {error && <p className="notice error" role="alert">{error}</p>}
       {state === "idle" && clip && (
-        <div className="voice-preview">
-          <LocalAudio clip={clip} label="Preview your voice note" />
-          <button type="button" className="text-button" disabled={disabled} onClick={() => {
+        <LocalAudio
+          clip={clip}
+          label="Preview your voice note"
+          recordedLength={recordedLength}
+          removeDisabled={disabled}
+          onRemove={() => {
             setError("");
             onChange(null);
-          }}>Remove audio</button>
-        </div>
+            micButton.current?.focus();
+          }}
+        />
       )}
     </>
   );
