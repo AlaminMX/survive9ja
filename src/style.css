@@ -1775,3 +1775,50 @@ html {
     scroll-padding-bottom: calc(80px + env(safe-area-inset-bottom));
   }
 }
+
+.voice-composer {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+.voice-composer legend {
+  padding-inline: 4px;
+  font-weight: 700;
+}
+.voice-composer > p {
+  margin: 0 0 8px;
+}
+.form label.voice-upload {
+  position: relative;
+  display: inline-flex;
+  cursor: pointer;
+}
+.voice-upload input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: inherit;
+  width: 100%;
+}
+.voice-upload:focus-within {
+  outline: 2px solid var(--leaf-ink);
+  outline-offset: 3px;
+}
+.voice-upload:has(input:disabled) {
+  opacity: .65;
+  cursor: default;
+}
+.voice-player {
+  margin-block: 12px;
+}
+.voice-audio {
+  display: block;
+  max-width: 100%;
+  width: 360px;
+}
+.voice-label {
+  color: var(--muted);
+  font-size: .8rem;
+  font-weight: 650;
+}
