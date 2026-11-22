@@ -37,6 +37,7 @@ import {
   Moon,
   MessageCirclePlus,
   Sun,
+  Search,
   UserRound,
   UsersRound,
   X,
@@ -85,6 +86,7 @@ import {
 } from "./expansion";
 import { profilePath, profileReturn } from "./profile-navigation";
 import { AdminDashboard } from "./admin";
+import { People, ProfileConnections } from "./people";
 import "./style.css";
 import "./gist.css";
 
@@ -184,6 +186,7 @@ function Logo() {
 }
 function Shell() {
   const { profile, session, loading } = useAccount();
+  const viewer = { username: profile?.username, canFollow: Boolean(session?.user.email_confirmed_at && profile?.completed_at) };
   const [callbackPending, setCallbackPending] = useState(
     window.location.pathname === "/" &&
       (authCallback.type === "signup" ||
@@ -230,6 +233,7 @@ function Shell() {
             <NavLink to="/diaries">
               <BookOpen size={17} /> The Diaries
             </NavLink>
+            <NavLink to="/search"><Search size={17} /> Search</NavLink>
             <NavLink to="/community">
               <UsersRound size={17} /> Community
             </NavLink>
@@ -261,6 +265,9 @@ function Shell() {
       </header>
       <main id="main" tabIndex={-1}>
         <Routes>
+          <Route path="/search" element={<People viewer={viewer} />} />
+          <Route path="/u/:username/followers" element={<People viewer={viewer} direction="followers" />} />
+          <Route path="/u/:username/following" element={<People viewer={viewer} direction="following" />} />
           <Route path="/" element={<Feed key={`square-${session?.user.id ?? "public"}`} kind="square" gist />} />
           <Route path="/gist-preview" element={<Navigate to="/" replace />} />
           <Route path="/diaries" element={<Feed key="diary" kind="diary" />} />
@@ -375,6 +382,7 @@ function Shell() {
           <House />
           Home
         </NavLink>
+        <NavLink to="/search"><Search /> Search</NavLink>
         <NavLink to="/diaries">
           <BookOpen />
           Diaries
@@ -1915,6 +1923,8 @@ function ProfileOverview({ own = false }: { own?: boolean }) {
         </div>
         {profile.bio && <p className="prose-body profile-bio">{profile.bio}</p>}
         {sample && <p className="notice">Fictional preview profile</p>}
+        {!sample && <ProfileConnections key={profile.username} username={profile.username} source={source}
+          viewer={{ username: account.profile?.username, canFollow: Boolean(account.session?.user.email_confirmed_at && account.profile?.completed_at) }} />}
         <div className="item-actions profile-actions">
           {owner && <Link className="button primary" to={settings} state={{ fromProfile: source }}>Edit profile</Link>}
           {own && <Link className="button secondary" to={"/u/" + profile.username} state={{ fromProfile: source }}>View public profile</Link>}
