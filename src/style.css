@@ -1779,11 +1779,6 @@ html {
 .voice-player {
   margin-block: 12px;
 }
-.voice-audio {
-  display: block;
-  max-width: 100%;
-  width: 360px;
-}
 .voice-label {
   color: var(--muted);
   font-size: .8rem;
@@ -1850,12 +1845,62 @@ html {
   min-width: 0;
   height: 28px;
 }
-.voice-preview {
+.voice-card {
+  box-sizing: border-box;
+  width: min(100%, 410px);
+  min-width: 0;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 6px 12px;
+  gap: 6px 9px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--leaf-soft);
+  color: var(--leaf-ink);
 }
-.voice-preview .text-button {
-  min-height: 44px;
+.voice-card :is(.voice-play, .voice-remove) {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 44px;
+  border: 0;
+  border-radius: 50%;
+}
+.voice-play {
+  background: var(--leaf);
+  color: var(--on-leaf);
+}
+.voice-remove {
+  background: transparent;
+  color: var(--terra);
+}
+.voice-remove:hover {
+  background: var(--surface);
+}
+.voice-progress {
+  min-width: 0;
+  flex: 1 1 80px;
+}
+.voice-card .voice-seek {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  accent-color: var(--leaf-ink);
+  cursor: pointer;
+}
+.voice-time {
+  display: block;
+  font-size: .75rem;
+  font-variant-numeric: tabular-nums;
+}
+.voice-play-error {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--terra);
+  font-size: .875rem;
 }
