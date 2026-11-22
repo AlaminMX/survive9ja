@@ -35,7 +35,7 @@ import {
   MapPin,
   MessageCircle,
   Moon,
-  Plus,
+  MessageCirclePlus,
   Sun,
   UserRound,
   UsersRound,
@@ -253,9 +253,6 @@ function Shell() {
             >
               {profile?.completed_at ? "My profile" : "Sign in"}
             </Link>
-            <Link className="button primary head-new" to="/new">
-              <Plus size={18} /> Drop a gist
-            </Link>
           </div>
         </div>
       </header>
@@ -356,6 +353,20 @@ function Shell() {
           />
         </Routes>
       </main>
+      <Link
+        className="compose-fab"
+        aria-label="Drop a gist"
+        title="Drop a gist"
+        to={location.pathname === "/new" ? location.pathname + location.search : "/new"}
+        onClick={(event) => {
+          if (location.pathname !== "/new" || !document.getElementById("gist-body")) return;
+          if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+          event.preventDefault();
+          document.getElementById("gist-body")?.focus();
+        }}
+      >
+        <MessageCirclePlus size={29} aria-hidden="true" />
+      </Link>
       <nav className="bottom-nav" aria-label="Mobile navigation">
         <NavLink to="/" end>
           <House />
@@ -364,10 +375,6 @@ function Shell() {
         <NavLink to="/diaries">
           <BookOpen />
           Diaries
-        </NavLink>
-        <NavLink className="nav-create" to="/new">
-          <Plus />
-          New
         </NavLink>
         <NavLink to={profilePath}>
           <UserRound />
@@ -2143,6 +2150,7 @@ function Editor({ kind }: { kind: Kind }) {
           </label>
           {diary && categoryField}
           <MentionField
+            id={diary ? undefined : "gist-body"}
             label={diary ? "Your story" : "Your gist"}
             placeholder={diary ? undefined : "Wetin dey happen?"}
             name="body"
