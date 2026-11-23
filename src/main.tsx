@@ -578,7 +578,7 @@ function EntryCard({ entry, gist = false }: { entry: Entry; gist?: boolean }) {
             </Link>
             {entry.voice_note && <span className="voice-label">Voice note</span>}
             <LikeButton item={entry} path={path} />
-            <ShareConversation path={path} title={entry.title} />
+            <ShareConversation path={path} entry={entry} />
           </div>
         </div>
         <Link
@@ -628,7 +628,7 @@ function EntryCard({ entry, gist = false }: { entry: Entry; gist?: boolean }) {
               <Heart size={16} /> {entry.relate} relate
             </Link>
           )}
-          <ShareConversation path={entryPath(entry)} title={entry.title} />
+          <ShareConversation path={entryPath(entry)} entry={entry} />
         </div>
       </div>
     </article>
@@ -2598,7 +2598,7 @@ function Detail({ kind }: { kind: Kind }) {
         <Link className="text-button" to={entryPath(entry) + "#replies"} state={state}>
           <MessageCircle size={16} aria-hidden="true" /> {entry.replies} {entry.replies === 1 ? "reply" : "replies"}
         </Link>
-        <ShareConversation path={entryPath(entry)} title={entry.title} />
+        <ShareConversation path={entryPath(entry)} entry={entry} />
       </>)}
       <Status error={error} />
       <section id="replies" className="reply-area">
