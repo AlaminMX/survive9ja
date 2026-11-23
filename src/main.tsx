@@ -1172,6 +1172,7 @@ function Auth() {
   );
   const [busy, setBusy] = useState(false);
   const [accountEmail, setAccountEmail] = useState("");
+  const [existingAccount, setExistingAccount] = useState(false);
   const [error, setError] = useState(() =>
     confirmationFailed
       ? "This confirmation link expired or was already used. Request a fresh link below, or sign in if you already confirmed your email."
@@ -1188,6 +1189,7 @@ function Auth() {
     const email = String(form.get("email") || "").trim();
     const password = String(form.get("password") || "");
     setBusy(true);
+    setExistingAccount(false);
     setError("");
     setInfo("");
     try {
@@ -1220,6 +1222,15 @@ function Auth() {
           password,
           options: { emailRedirectTo: confirmationTarget },
         });
+        const duplicate =
+          result.error?.code === "user_already_exists" ||
+          result.error?.code === "email_exists" ||
+          (!result.error && !result.data.session && result.data.user?.identities?.length === 0);
+        if (duplicate) {
+          setExistingAccount(true);
+          setError("This email address is already tied to a Survive9ja account. Sign in or reset your password.");
+          return;
+        }
         if (result.error) throw result.error;
         setInfo(
           "Check your inbox and spam folder for a confirmation link. If you already have an account, sign in. If you’re still waiting on a link, use Resend confirmation.",
@@ -1290,7 +1301,13 @@ function Auth() {
               type="email"
               autoComplete="email"
               value={accountEmail}
-              onChange={(event) => setAccountEmail(event.target.value)}
+              onChange={(event) => {
+                setAccountEmail(event.target.value);
+                if (existingAccount) {
+                  setExistingAccount(false);
+                  setError("");
+                }
+              }}
               required
             />
           </label>
@@ -1369,7 +1386,7 @@ function Auth() {
           </>
         ) : (
           <>
-            {mode === "register" && (info || error) && (
+            {mode === "register" && !existingAccount && (info || error) && (
               <button
                 type="button"
                 disabled={busy}
@@ -1382,9 +1399,18 @@ function Auth() {
                 Resend confirmation
               </button>
             )}
+            {mode === "register" && existingAccount && (
+              <button type="button" onClick={() => {
+                setMode("forgot");
+                setExistingAccount(false);
+                setError("");
+                setInfo("");
+              }}>Reset password</button>
+            )}
             <button
               onClick={() => {
                 setMode("login");
+                setExistingAccount(false);
                 setError("");
                 setInfo("");
               }}
