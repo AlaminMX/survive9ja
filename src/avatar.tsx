@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ImagePlus } from "lucide-react";
-import { db } from "./api";
+import { db, message } from "./api";
 
 const bucket = "survive9ja-avatars";
 const avatarSize = 512;
@@ -24,7 +24,7 @@ export async function uploadAvatar(accountId: string, blob: Blob) {
     throw new Error(
       /bucket not found/i.test(error.message)
         ? "Photo uploads are unavailable until the profile photo storage is set up."
-        : "Couldn’t upload your photo. " + error.message,
+        : message(error, "Couldn’t upload your photo. Please try again."),
     );
   }
   return storage.getPublicUrl(path).data.publicUrl;

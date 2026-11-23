@@ -1228,7 +1228,7 @@ function Auth() {
       const problem = message(e);
       if (
         (mode === "register" || mode === "resend") &&
-        /error sending confirmation email/i.test(problem)
+        /error sending confirmation email/i.test(e instanceof Error ? e.message : problem)
       ) {
         setError(
           "We couldn’t send the confirmation email. Please try Resend confirmation later.",
@@ -1313,7 +1313,7 @@ function Auth() {
                   options: { redirectTo: base },
                 })
                 .then(({ error: e }) => {
-                  if (e) setError(e.message);
+                  if (e) setError(message(e));
                 });
           }}
         >
@@ -1534,11 +1534,7 @@ function ProfileForm({ onboarding }: { onboarding: boolean }) {
         setUsernameError(problem);
         focusField("username");
       } else {
-        setError(
-          problem === "Failed to fetch"
-            ? "Couldn’t reach the server. Check your connection and try saving again."
-            : problem,
-        );
+        setError(problem);
       }
     } finally {
       setBusy(false);

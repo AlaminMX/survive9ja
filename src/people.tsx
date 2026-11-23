@@ -118,6 +118,7 @@ function PeopleList({ query, username, direction, viewer }: { query: string; use
   const [loading, setLoading] = useState(true);
   const [more, setMore] = useState(false);
   const [error, setError] = useState("");
+  const [retry, setRetry] = useState(0);
   useEffect(() => {
     let active = true;
     const timer = window.setTimeout(() => {
@@ -128,11 +129,20 @@ function PeopleList({ query, username, direction, viewer }: { query: string; use
       ).finally(() => { if (active) setLoading(false); });
     }, direction ? 0 : 240);
     return () => { active = false; window.clearTimeout(timer); };
-  }, [query, username, direction]);
+  }, [query, username, direction, retry]);
   if (!db) return <p className="notice">People search and following require the community database.</p>;
   return (
     <>
-      {error && <p className="notice error" role="alert">{error}</p>}
+      {error && (
+        <div className="notice error">
+          <p role="alert">{error}</p>
+          {!rows.length && <button className="button secondary" type="button" onClick={() => {
+            setError("");
+            setLoading(true);
+            setRetry((value) => value + 1);
+          }}>Try again</button>}
+        </div>
+      )}
       {loading && <p role="status">{direction ? "Loading people…" : "Finding people…"}</p>}
       {!loading && !error && rows.length === 0 && <p className="muted">{direction ? "No members in this list yet." : "No matching members."}</p>}
       {!loading && !error && !direction && rows.length > 0 && <p className="sr-only" role="status">{rows.length} matching {rows.length === 1 ? "person" : "people"}</p>}

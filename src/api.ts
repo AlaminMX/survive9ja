@@ -17,17 +17,31 @@ export async function rpc<T>(
 ): Promise<T> {
   if (!db)
     throw Error("Account and community features need a Supabase connection.");
-  const { error, data } = await db.rpc(name, args);
+  const { error, data, status } = await db.rpc(name, args);
   if (error)
     throw Error(
       error.code === "23505"
         ? "That username is already taken."
-        : error.message,
+        : message({ message: error.message, code: error.code, status }),
     );
   return data as T;
 }
-export function message(error: unknown) {
-  return error instanceof Error
-    ? error.message
-    : "Something went wrong. Please try again.";
+export const connectionMessage = "Poor internet connection. Check your connection and try again.";
+
+export function message(error: unknown, fallback = "Something went wrong. Please try again.") {
+  const details = error && typeof error === "object" ? error as {
+    message?: unknown; name?: unknown; status?: unknown; code?: unknown;
+  } : {};
+  const text = typeof details.message === "string" ? details.message.trim() : typeof error === "string" ? error.trim() : "";
+  const status = Number(details.status);
+  if (
+    details.status === 0 || details.name === "FunctionsFetchError" ||
+    (details.name === "AuthRetryableFetchError" && !status) ||
+    /failed to fetch|load failed|network\s*error|network request failed|fetch failed|internet connection.*offline|err_(?:internet|network|connection|timed_out)|econnreset|etimedout/i.test(text)
+  ) return connectionMessage;
+  if (status === 429) return "Too many requests. Wait a moment and try again.";
+  if (status >= 500 || details.name === "FunctionsRelayError" || details.code === "PGRST202")
+    return "Survive9ja is temporarily unavailable. Please try again in a moment.";
+  if (/^permission denied (?:for|to) /i.test(text)) return "You don’t have access to do that.";
+  return text || fallback;
 }
