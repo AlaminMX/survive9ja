@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, NavLink, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, MessageCircleMore, Send } from "lucide-react";
 import { db, message, rpc } from "./api";
 
@@ -36,22 +36,33 @@ function useMessageUpdates(member?: string) {
   return revision;
 }
 
-export function MessagesLink({ member }: { member?: string }) {
+export function useMessageUnread(member?: string) {
   const revision = useMessageUpdates(member);
-  const [unread, setUnread] = useState(0);
+  const [count, setCount] = useState<{ member: string; unread: number }>();
   useEffect(() => {
     let active = true;
     if (member && db) void rpc<number>("dm_unread_count").then(
-      (value) => { if (active) setUnread(value); },
+      (value) => { if (active) setCount({ member, unread: value }); },
       () => {},
     );
     return () => { active = false; };
   }, [member, revision]);
+  return member && count?.member === member ? count.unread : 0;
+}
+
+export function MessagesLink({ unread, mobile = false }: { unread: number; mobile?: boolean }) {
   return (
-    <Link className="icon messages-link" aria-label={unread ? `Messages, ${unread} unread conversations` : "Messages"} to="/messages">
-      <MessageCircleMore size={24} strokeWidth={2.4} aria-hidden="true" />
-      {unread > 0 && <span aria-hidden="true">{unread > 99 ? "99+" : unread}</span>}
-    </Link>
+    <NavLink
+      className={mobile ? "messages-tab" : "icon messages-link"}
+      aria-label={unread ? `Messages, ${unread} unread conversations` : "Messages"}
+      to="/messages"
+    >
+      <span className="messages-icon">
+        <MessageCircleMore size={24} strokeWidth={2.4} aria-hidden="true" />
+        {unread > 0 && <span className="messages-count" aria-hidden="true">{unread > 99 ? "99+" : unread}</span>}
+      </span>
+      {mobile && "Messages"}
+    </NavLink>
   );
 }
 
