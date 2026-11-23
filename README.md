@@ -125,7 +125,7 @@ Apply the `admin_accounts.sql` migration in order. The Vercel deletion endpoint 
 
 After applying the `gist_voice_notes.sql` migration, verified members can record an optional voice note in **Drop a gist**, including Circle posts. The editor accepts clips up to one minute and 2 MB and lets members publish with just a title, category and audio after applying the voice-only migration. Tap the microphone in the writing field to start recording and tap the stop control to preview it. The private bucket enforces the file size and list of allowed MIME types. The editor checks playback and duration in the browser. Support for specific formats depends on the browser.
 
-Audio is downloaded only on request. Storage checks the parent gist's visibility each time and allows moderators to listen in report review. The policy requires Supabase Storage's operation-aware helper `storage.allow_only_operation(text)`. Unattached uploads expire for publication after a day. If a draft is abandoned after upload, remove its expired unattached object via the Storage API before deleting its reservation. Account deletion cleans up both voice notes and profile photos.
+Audio is downloaded only on request. Deploy `play-gist-voice` in the same Supabase project with `supabase functions deploy play-gist-voice --no-verify-jwt`. The function checks the caller and gist visibility through PostgREST before fetching the private file, including when a moderator listens during report review. Unattached uploads expire for publication after a day. If a draft is abandoned after upload, remove its expired unattached object via the Storage API before deleting its reservation. Account deletion cleans up both voice notes and profile photos.
 
 ## Private messages
 
