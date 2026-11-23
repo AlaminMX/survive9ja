@@ -1080,7 +1080,8 @@ function Require({
   if (!session.user.email_confirmed_at)
     return (
       <Narrow title="Confirm your email">
-        <p>Open the confirmation link in your inbox to continue.</p>
+        <p>Open the latest confirmation link in your inbox to continue.</p>
+        <Link className="button secondary" to="/auth?resend=1">Request a new link</Link>
       </Narrow>
     );
   if (!onboarding && !profile?.completed_at)
@@ -1158,19 +1159,22 @@ function PasswordField({
 function Auth() {
   const { session, profile, loading } = useAccount();
   const location = useLocation();
-  const [mode, setMode] = useState(() =>
-    location.search.includes("reset") || sessionStorage.getItem("recovery")
-      ? "reset"
-      : "login",
-  );
-  const [busy, setBusy] = useState(false);
   const authState = location.state as {
     next?: string;
     confirmationFailed?: boolean;
   } | null;
+  const confirmationFailed = authCallback.failed || authState?.confirmationFailed;
+  const search = new URLSearchParams(location.search);
+  const [mode, setMode] = useState(() =>
+    search.has("reset") || sessionStorage.getItem("recovery")
+      ? "reset"
+      : confirmationFailed || search.has("resend") ? "resend" : "login",
+  );
+  const [busy, setBusy] = useState(false);
+  const [accountEmail, setAccountEmail] = useState("");
   const [error, setError] = useState(() =>
-    authCallback.failed || authState?.confirmationFailed
-      ? "This email link expired or has already been used. Sign in if your email is confirmed, or request a fresh confirmation link."
+    confirmationFailed
+      ? "This confirmation link expired or was already used. Request a fresh link below, or sign in if you already confirmed your email."
       : "",
   );
   const [info, setInfo] = useState("");
@@ -1181,7 +1185,7 @@ function Auth() {
     event.preventDefault();
     if (!db) return;
     const form = new FormData(event.currentTarget);
-    const email = String(form.get("email") || "");
+    const email = String(form.get("email") || "").trim();
     const password = String(form.get("password") || "");
     setBusy(true);
     setError("");
@@ -1222,6 +1226,11 @@ function Auth() {
         );
       } else {
         const result = await db.auth.signInWithPassword({ email, password });
+        if (result.error?.code === "email_not_confirmed") {
+          setMode("resend");
+          setError("Confirm your email before signing in. Open the latest link in your inbox or request a fresh one below.");
+          return;
+        }
         if (result.error) throw result.error;
       }
     } catch (e) {
@@ -1276,7 +1285,14 @@ function Auth() {
         {mode !== "reset" && (
           <label>
             Email
-            <input name="email" type="email" autoComplete="email" required />
+            <input
+              name="email"
+              type="email"
+              autoComplete="email"
+              value={accountEmail}
+              onChange={(event) => setAccountEmail(event.target.value)}
+              required
+            />
           </label>
         )}
         {(mode === "login" || mode === "register" || mode === "reset") && (
