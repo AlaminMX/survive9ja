@@ -1016,7 +1016,8 @@ dialog::backdrop {
     padding-inline: max(16px, env(safe-area-inset-left))
       max(16px, env(safe-area-inset-right));
   }
-  .main-nav {
+  .main-nav,
+  .header-profile {
     display: none;
   }
   .head-actions {
@@ -2018,6 +2019,12 @@ html {
 
 .messages-link {
   position: relative;
+  color: var(--leaf-ink);
+  background: var(--leaf-soft);
+  border-radius: 14px;
+}
+.messages-link svg {
+  transform: rotate(-9deg);
 }
 .messages-link > span {
   position: absolute;
