@@ -87,7 +87,7 @@ import {
 import { profilePath, profileReturn } from "./profile-navigation";
 import { AdminDashboard } from "./admin";
 import { People, ProfileConnections } from "./people";
-import { MessageModeration, Messages, MessagesLink } from "./messages";
+import { MessageModeration, Messages, MessagesLink, useMessageUnread } from "./messages";
 import "./style.css";
 import "./gist.css";
 
@@ -188,6 +188,7 @@ function Logo() {
 function Shell() {
   const { profile, session, loading } = useAccount();
   const viewer = { username: profile?.username, canFollow: Boolean(session?.user.email_confirmed_at && profile?.completed_at) };
+  const unreadMessages = useMessageUnread(viewer.canFollow ? session?.user.id : undefined);
   const [callbackPending, setCallbackPending] = useState(
     window.location.pathname === "/" &&
       (authCallback.type === "signup" ||
@@ -255,9 +256,9 @@ function Shell() {
             >
               {theme === "dark" ? <Sun size={19} /> : <Moon size={19} />}
             </button>
-            {viewer.canFollow && <MessagesLink key={session?.user.id} member={session?.user.id} />}
+            {viewer.canFollow && <MessagesLink unread={unreadMessages} />}
             <Link
-              className={profile?.completed_at ? "signin header-profile" : "signin"}
+              className="signin header-account"
               to={profile?.completed_at ? profilePath : "/auth"}
             >
               {profile?.completed_at ? "My profile" : "Sign in"}
@@ -388,6 +389,7 @@ function Shell() {
           Home
         </NavLink>
         <NavLink to="/search"><Search /> Search</NavLink>
+        <MessagesLink unread={unreadMessages} mobile />
         <NavLink to="/diaries">
           <BookOpen />
           Diaries

@@ -1017,7 +1017,8 @@ dialog::backdrop {
       max(16px, env(safe-area-inset-right));
   }
   .main-nav,
-  .header-profile {
+  .header-account,
+  .head-actions .messages-link {
     display: none;
   }
   .head-actions {
@@ -1030,7 +1031,7 @@ dialog::backdrop {
     left: 0;
     right: 0;
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     padding: 4px max(9px, env(safe-area-inset-right))
       calc(4px + env(safe-area-inset-bottom))
       max(9px, env(safe-area-inset-left));
@@ -2023,12 +2024,19 @@ html {
   background: var(--leaf-soft);
   border-radius: 14px;
 }
-.messages-link svg {
+.messages-icon {
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+.messages-icon svg {
   transform: rotate(-9deg);
 }
-.messages-link > span {
+.messages-count {
   position: absolute;
-  inset: 0 0 auto auto;
+  inset: -6px -9px auto auto;
+  min-width: 14px;
+  text-align: center;
   padding: 1px 4px;
   border-radius: 9px;
   color: var(--on-leaf);
