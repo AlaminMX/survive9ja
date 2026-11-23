@@ -94,7 +94,6 @@ export function People({ viewer, direction }: { viewer: Viewer; direction?: "fol
               placeholder="e.g. @survive9ja"
               autoComplete="off"
               spellCheck={false}
-              aria-describedby="people-query-hint"
             />
             {input && (
               <button className="icon people-clear" type="button" aria-label="Clear search" onClick={(event) => {
@@ -103,7 +102,6 @@ export function People({ viewer, direction }: { viewer: Viewer; direction?: "fol
               }}><X size={18} aria-hidden="true" /></button>
             )}
           </div>
-          <small className="muted" id="people-query-hint">Results update as you type.</small>
         </form>
       )}
       {!direction && query.replace(/^@+/, "").length < 2 ? (
