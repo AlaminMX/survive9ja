@@ -1,14 +1,18 @@
 import { useId, useRef, useState } from "react";
 import { Share2 } from "lucide-react";
+import { shareDetails } from "./share-details";
+import type { Entry } from "./data";
+import { preview } from "./api";
 
-export function ShareConversation({ path, title }: { path: string; title: string }) {
+export function ShareConversation({ path, entry }: { path: string; entry: Entry }) {
+  const { title, description } = shareDetails(entry);
   const heading = useId();
   const dialog = useRef<HTMLDialogElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const [status, setStatus] = useState("");
-  const url = new URL(path, window.location.origin).href;
-  const whatsapp = "https://wa.me/?text=" + encodeURIComponent(title + "\n" + url);
+  const url = new URL(preview ? path : "/share" + path, window.location.origin).href;
+  const whatsapp = "https://wa.me/?text=" + encodeURIComponent([title, description, url].join("\n"));
 
   async function copy() {
     try {
@@ -23,7 +27,7 @@ export function ShareConversation({ path, title }: { path: string; title: string
 
   async function share() {
     try {
-      await navigator.share({ title, url });
+      await navigator.share({ title, text: title + "\n" + description, url });
       dialog.current?.close();
     } catch (error) {
       if (!(error instanceof DOMException && error.name === "AbortError")) {
@@ -54,6 +58,7 @@ export function ShareConversation({ path, title }: { path: string; title: string
         onClose={() => trigger.current?.focus()}
       >
         <h2 id={heading}>Share this conversation</h2>
+        <p>{title}</p>
         <label>
           Conversation link
           <input ref={input} value={url} readOnly />
