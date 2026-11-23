@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Mail, Send } from "lucide-react";
+import { ArrowLeft, MessageCircleMore, Send } from "lucide-react";
 import { db, message, rpc } from "./api";
 
 type Thread = {
@@ -49,7 +49,7 @@ export function MessagesLink({ member }: { member?: string }) {
   }, [member, revision]);
   return (
     <Link className="icon messages-link" aria-label={unread ? `Messages, ${unread} unread conversations` : "Messages"} to="/messages">
-      <Mail size={21} aria-hidden="true" />
+      <MessageCircleMore size={24} strokeWidth={2.4} aria-hidden="true" />
       {unread > 0 && <span aria-hidden="true">{unread > 99 ? "99+" : unread}</span>}
     </Link>
   );

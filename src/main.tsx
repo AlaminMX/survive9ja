@@ -240,7 +240,6 @@ function Shell() {
             </NavLink>
           </nav>
           <div className="head-actions">
-            {viewer.canFollow && <MessagesLink key={session?.user.id} member={session?.user.id} />}
             <button
               className="icon theme"
               aria-label={`Theme: ${theme}. Switch theme`}
@@ -256,8 +255,9 @@ function Shell() {
             >
               {theme === "dark" ? <Sun size={19} /> : <Moon size={19} />}
             </button>
+            {viewer.canFollow && <MessagesLink key={session?.user.id} member={session?.user.id} />}
             <Link
-              className="signin"
+              className={profile?.completed_at ? "signin header-profile" : "signin"}
               to={profile?.completed_at ? profilePath : "/auth"}
             >
               {profile?.completed_at ? "My profile" : "Sign in"}
