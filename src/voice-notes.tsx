@@ -314,9 +314,10 @@ export function VoicePlayer({ path }: { path: string }) {
           setBusy(true);
           setError("");
           try {
-            const { data, error } = await db.storage.from(voiceBucket).download(path, {}, { cache: "no-store" });
-            if (error) throw error;
-            setClip(data);
+            const { data, error, response } = await db.functions.invoke<Blob>("play-gist-voice", { body: { path } });
+            if (error || !data?.size) throw Error("Audio unavailable.");
+            const mime = response?.headers.get("X-Voice-Content-Type");
+            setClip(mime?.startsWith("audio/") ? data.slice(0, data.size, mime) : data);
           } catch {
             setError("This voice note couldn’t load. Try again.");
           } finally {
