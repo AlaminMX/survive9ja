@@ -315,11 +315,12 @@ export function VoicePlayer({ path }: { path: string }) {
           setError("");
           try {
             const { data, error, response } = await db.functions.invoke<Blob>("play-gist-voice", { body: { path } });
-            if (error || !data?.size) throw Error("Audio unavailable.");
+            if (error?.name === "FunctionsFetchError" || error?.name === "FunctionsRelayError") throw error;
+            if (error || !data?.size) throw Error("This voice note couldn’t load. Try again.");
             const mime = response?.headers.get("X-Voice-Content-Type");
             setClip(mime?.startsWith("audio/") ? data.slice(0, data.size, mime) : data);
-          } catch {
-            setError("This voice note couldn’t load. Try again.");
+          } catch (reason) {
+            setError(message(reason, "This voice note couldn’t load. Try again."));
           } finally {
             setBusy(false);
           }

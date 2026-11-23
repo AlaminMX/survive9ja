@@ -27,9 +27,11 @@ function useMessageUpdates(member?: string) {
       .subscribe((status) => { if (status === "SUBSCRIBED") refresh(); });
     const poll = window.setInterval(() => { if (!document.hidden) refresh(); }, 20000);
     window.addEventListener("focus", refresh);
+    window.addEventListener("online", refresh);
     return () => {
       window.clearInterval(poll);
       window.removeEventListener("focus", refresh);
+      window.removeEventListener("online", refresh);
       void client.removeChannel(channel);
     };
   }, [member, topic]);
@@ -74,6 +76,8 @@ export function Messages({ member }: { member: string }) {
   const [more, setMore] = useState(false);
   const [paging, setPaging] = useState(false);
   const [error, setError] = useState("");
+  const [loadError, setLoadError] = useState("");
+  const [retry, setRetry] = useState(0);
   useEffect(() => {
     let active = true;
     void rpc<Thread[]>("dm_inbox").then(
@@ -87,12 +91,12 @@ export function Messages({ member }: { member: string }) {
           return [...top, ...older.filter((row) => !top.some((fresh) => fresh.id === row.id))];
         });
         setMore(data.length > 30);
-        setError("");
+        setLoadError("");
       },
-      (reason) => { if (active) setError(message(reason)); },
+      (reason) => { if (active) setLoadError(message(reason)); },
     );
     return () => { active = false; };
-  }, [revision]);
+  }, [revision, retry]);
 
   async function moreRows() {
     const last = rows?.at(-1);
@@ -121,7 +125,11 @@ export function Messages({ member }: { member: string }) {
           <button type="button" aria-pressed={tab === "requests"} onClick={() => setTab("requests")}>Requests</button>
         </div>
         {error && <p className="notice error" role="alert">{error}</p>}
-        {!rows && !error && <p role="status">Loading messages…</p>}
+        {loadError && <ReadFailure error={loadError} retry={() => {
+          setLoadError("");
+          setRetry((value) => value + 1);
+        }} />}
+        {!rows && !loadError && <p role="status">Loading messages…</p>}
         {visibleRows?.length === 0 && <p className="muted">{tab === "chats" ? "No conversations yet." : "No message requests."}</p>}
         <ul className="dm-list">
           {visibleRows?.map((row) => (
@@ -151,24 +159,29 @@ export function Messages({ member }: { member: string }) {
 function NewConversation({ username, revision }: { username: string; revision: number }) {
   const [person, setPerson] = useState<{ name: string; can_start: boolean; direct: boolean }>();
   const [error, setError] = useState("");
+  const [retry, setRetry] = useState(0);
   const navigate = useNavigate();
   useEffect(() => {
     let active = true;
     void rpc<{ id: string | null; name: string; can_start: boolean; direct: boolean }>("dm_open", { p_username: username }).then(
       (data) => {
         if (!active) return;
+        setError("");
         if (data.id) navigate("/messages/" + data.id, { replace: true });
         else setPerson(data);
       },
       (reason) => { if (active) setError(message(reason)); },
     );
     return () => { active = false; };
-  }, [navigate, revision, username]);
+  }, [navigate, revision, retry, username]);
   return (
     <section className="dm-thread">
       <Link className="back" to="/messages"><ArrowLeft size={16} /> Inbox</Link>
       <h1>{person?.name ?? "New message"}</h1>
-      {error && <p className="notice error" role="alert">{error}</p>}
+      {error && <ReadFailure error={error} retry={() => {
+        setError("");
+        setRetry((value) => value + 1);
+      }} />}
       {!person && !error && <p role="status">Opening conversation…</p>}
       {person && (person.can_start ? (
         <>
@@ -216,6 +229,7 @@ function Conversation({ id, revision }: { id: string; revision: number }) {
   const [older, setOlder] = useState<Message[]>([]);
   const [more, setMore] = useState(false);
   const [error, setError] = useState("");
+  const [loadError, setLoadError] = useState("");
   const [busy, setBusy] = useState(false);
   const [refresh, setRefresh] = useState(0);
   const [marked, setMarked] = useState(0);
@@ -227,10 +241,11 @@ function Conversation({ id, revision }: { id: string; revision: number }) {
     void rpc<ThreadData>("dm_read", { p_id: id }).then(
       (value) => {
         if (!active) return;
+        setLoadError("");
         setData({ ...value, messages: value.messages.slice(-40) });
         setMore(value.messages.length > 40);
       },
-      (reason) => { if (active) setError(message(reason)); },
+      (reason) => { if (active) setLoadError(message(reason)); },
     );
     return () => { active = false; };
   }, [id, revision, refresh]);
@@ -285,7 +300,11 @@ function Conversation({ id, revision }: { id: string; revision: number }) {
     <section className="dm-thread">
       <Link className="back" to="/messages"><ArrowLeft size={16} /> Inbox</Link>
       {error && <p className="notice error" role="alert">{error}</p>}
-      {!thread ? (!error && <p role="status">Loading conversation…</p>) : (
+      {loadError && <ReadFailure error={loadError} retry={() => {
+        setLoadError("");
+        setRefresh((value) => value + 1);
+      }} />}
+      {!thread ? (!loadError && <p role="status">Loading conversation…</p>) : (
         <>
           <h1>{thread.name}</h1>
           <div className="item-actions">
@@ -316,6 +335,15 @@ function Conversation({ id, revision }: { id: string; revision: number }) {
         </>
       )}
     </section>
+  );
+}
+
+function ReadFailure({ error, retry }: { error: string; retry: () => void }) {
+  return (
+    <div className="notice error">
+      <p role="alert">{error}</p>
+      <button className="button secondary" type="button" onClick={retry}>Try again</button>
+    </div>
   );
 }
 
