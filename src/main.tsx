@@ -92,6 +92,8 @@ import "./style.css";
 import "./gist.css";
 
 const settings = "/settings/profile";
+const resetPath = "/reset-password";
+const recoveryKey = "survive9ja-recovery-account";
 const entryPath = (entry: Entry) =>
   `/${entry.kind === "diary" ? "diary" : "post"}/${entry.id}`;
 const Account = createContext<{
@@ -129,8 +131,10 @@ function AccountProvider({ children }: { children: ReactNode }) {
     let active = true,
       sequence = 0;
     const { data } = client.auth.onAuthStateChange((event, value) => {
-      if (event === "PASSWORD_RECOVERY")
-        sessionStorage.setItem("recovery", "1");
+      if (event === "PASSWORD_RECOVERY" && value)
+        sessionStorage.setItem(recoveryKey, value.user.id);
+      else if (event === "SIGNED_OUT")
+        sessionStorage.removeItem(recoveryKey);
       setSession(value);
       if (event === "TOKEN_REFRESHED") return;
       const current = ++sequence;
@@ -190,17 +194,15 @@ function Shell() {
   const viewer = { username: profile?.username, canFollow: Boolean(session?.user.email_confirmed_at && profile?.completed_at) };
   const unreadMessages = useMessageUnread(viewer.canFollow ? session?.user.id : undefined);
   const [callbackPending, setCallbackPending] = useState(
-    window.location.pathname === "/" &&
-      (authCallback.type === "signup" ||
-        authCallback.type === "recovery" ||
-        authCallback.failed),
+    (authCallback.type === "recovery" && window.location.pathname !== resetPath) ||
+      (window.location.pathname === "/" && (authCallback.type === "signup" || authCallback.failed)),
   );
   const navigate = useNavigate();
   useEffect(() => {
     if (!callbackPending || loading) return;
     setCallbackPending(false);
     if (authCallback.type === "recovery")
-      navigate("/auth?reset=1", { replace: true });
+      navigate(resetPath, { replace: true });
     else if (session && !authCallback.failed)
       navigate(profile?.completed_at ? profilePath : "/onboarding", {
         replace: true,
@@ -295,6 +297,7 @@ function Shell() {
             element={<Compose key="edit" kind="diary" />}
           />
           <Route path="/auth" element={<Auth />} />
+          <Route path={resetPath} element={<ResetPassword />} />
           <Route
             path="/onboarding"
             element={<ProfileEditor key="onboarding" onboarding />}
@@ -1156,6 +1159,53 @@ function PasswordField({
     </div>
   );
 }
+function ResetPassword() {
+  const { session, loading } = useAccount();
+  const [busy, setBusy] = useState(false);
+  const [updated, setUpdated] = useState(false);
+  const [error, setError] = useState("");
+  const allowed = !!session && sessionStorage.getItem(recoveryKey) === session.user.id && !authCallback.failed;
+  return (
+    <Narrow title="Choose a new password" back="/">
+      {updated ? (
+        <>
+          <Status info="Your password was updated. Use it the next time you sign in." />
+          <Link className="button primary" to={profilePath}>Continue</Link>
+        </>
+      ) : loading ? (
+        <p role="status">Checking your reset link…</p>
+      ) : allowed ? (
+        <form className="form" onSubmit={async (event) => {
+          event.preventDefault();
+          if (!db || busy) return;
+          const password = String(new FormData(event.currentTarget).get("password") ?? "");
+          setError("");
+          setBusy(true);
+          try {
+            const { error: failure } = await db.auth.updateUser({ password });
+            if (failure) throw failure;
+            sessionStorage.removeItem(recoveryKey);
+            setUpdated(true);
+          } catch (reason) {
+            setError(message(reason));
+          } finally {
+            setBusy(false);
+          }
+        }}>
+          <Status error={error} />
+          <PasswordField existing={false} reset />
+          <button className="button primary" disabled={busy}>{busy ? "Saving…" : "Save password"}</button>
+        </form>
+      ) : (
+        <>
+          <Status error="This password reset link is invalid or has expired." />
+          <Link className="button primary" to="/auth?forgot=1">Request a new reset link</Link>
+        </>
+      )}
+    </Narrow>
+  );
+}
+
 function Auth() {
   const { session, profile, loading } = useAccount();
   const location = useLocation();
@@ -1166,9 +1216,7 @@ function Auth() {
   const confirmationFailed = authCallback.failed || authState?.confirmationFailed;
   const search = new URLSearchParams(location.search);
   const [mode, setMode] = useState(() =>
-    search.has("reset") || sessionStorage.getItem("recovery")
-      ? "reset"
-      : confirmationFailed || search.has("resend") ? "resend" : "login",
+    search.has("forgot") ? "forgot" : confirmationFailed || search.has("resend") ? "resend" : "login",
   );
   const [busy, setBusy] = useState(false);
   const [accountEmail, setAccountEmail] = useState("");
@@ -1203,14 +1251,9 @@ function Auth() {
         setInfo(
           "If this address has an unconfirmed account, check your inbox for a fresh link.",
         );
-      } else if (mode === "reset") {
-        const result = await db.auth.updateUser({ password });
-        if (result.error) throw result.error;
-        sessionStorage.removeItem("recovery");
-        setMode("login");
       } else if (mode === "forgot") {
         const result = await db.auth.resetPasswordForEmail(email, {
-          redirectTo: base + "?reset=1",
+          redirectTo: window.location.origin + resetPath,
         });
         if (result.error) throw result.error;
         setInfo(
@@ -1260,6 +1303,7 @@ function Auth() {
       setBusy(false);
     }
   }
+  if (search.has("reset")) return <Navigate to={resetPath} replace />;
   if (session && !loading && (mode === "login" || mode === "register"))
     return (
       <Navigate
@@ -1277,9 +1321,7 @@ function Auth() {
             ? "Resend confirmation email"
             : mode === "forgot"
               ? "Reset your password"
-              : mode === "reset"
-                ? "Choose a new password"
-                : "Sign in"
+              : "Sign in"
       }
       back="/"
     >
@@ -1293,8 +1335,7 @@ function Auth() {
       {!db && <Status info="Account features require Supabase setup." />}
       <Status error={error} info={info} />
       <form className="form" onSubmit={(e) => void submit(e)}>
-        {mode !== "reset" && (
-          <label>
+        <label>
             Email
             <input
               name="email"
@@ -1310,18 +1351,17 @@ function Auth() {
               }}
               required
             />
-          </label>
-        )}
-        {(mode === "login" || mode === "register" || mode === "reset") && (
+        </label>
+        {(mode === "login" || mode === "register") && (
           <PasswordField
             key={mode}
             existing={mode === "login"}
-            reset={mode === "reset"}
+            reset={false}
           />
         )}
         <button
           className="button primary"
-          disabled={!db || busy || loading || (mode === "reset" && !session)}
+          disabled={!db || busy || loading}
         >
           {mode === "register"
             ? "Create account"
@@ -1329,9 +1369,7 @@ function Auth() {
               ? "Send new confirmation link"
               : mode === "forgot"
                 ? "Send reset link"
-                : mode === "reset"
-                  ? "Save password"
-                  : "Sign in"}
+                : "Sign in"}
         </button>
       </form>
       {(mode === "login" || mode === "register") && (
